@@ -27,7 +27,7 @@ $('#site-header').outerHTML = `
     <button class="menu-close" aria-label="Close menu"></button>
   </div>
   <div class="wrap" style="flex:1;display:flex;flex-direction:column"><div class="menu-panel">
-    <nav class="nav" id="nav" aria-label="Main">${navLinks}</nav>
+    <nav class="nav" id="nav" aria-label="Main"><span class="nav-indicator" aria-hidden="true"></span>${navLinks}</nav>
     <div class="menu-aside">
       <span class="label">Profiles</span>
       <ul>${extLinks().map(([k, u]) => `<li><a href="${u}" target="_blank" rel="noopener">${LINK_NAMES[k]}</a></li>`).join('')}<li><a href="mailto:mkamruzzamandu81@gmail.com">mkamruzzamandu81@gmail.com</a></li></ul>
@@ -59,6 +59,41 @@ const setMenu = open => {
 menuBtn.addEventListener('click', () => setMenu(true));
 $('.menu-close').addEventListener('click', () => setMenu(false));
 addEventListener('keydown', e => { if (e.key === 'Escape' && menu.classList.contains('open')) setMenu(false); });
+
+// The lime marker follows the current page, pointer, keyboard focus, or menu-wheel selection.
+const nav = $('#nav'), navItems = $$('a', nav), navIndicator = $('.nav-indicator', nav);
+const currentNavItem = navItems.find(a => a.getAttribute('aria-current') === 'page') || navItems[0];
+let previewNavItem = null, navWheelLocked = false;
+const moveNavIndicator = item => {
+  if (!item || !navIndicator) return;
+  const navRect = nav.getBoundingClientRect(), itemRect = item.getBoundingClientRect();
+  navIndicator.style.transform = `translate3d(${itemRect.right - navRect.left + 18}px, ${itemRect.top - navRect.top + (itemRect.height - 18) / 2}px, 0)`;
+  navIndicator.classList.add('ready');
+};
+const showNavTarget = item => moveNavIndicator(item || currentNavItem);
+navItems.forEach(item => {
+  item.addEventListener('pointerenter', () => { previewNavItem = item; showNavTarget(item); });
+  item.addEventListener('focus', () => { previewNavItem = item; showNavTarget(item); });
+});
+nav.addEventListener('pointerleave', () => { previewNavItem = null; showNavTarget(); });
+nav.addEventListener('focusout', () => requestAnimationFrame(() => {
+  if (!nav.contains(document.activeElement)) { previewNavItem = null; showNavTarget(); }
+}));
+nav.addEventListener('wheel', event => {
+  if (!menu.classList.contains('open') || Math.abs(event.deltaY) < 2) return;
+  event.preventDefault();
+  if (navWheelLocked) return;
+  navWheelLocked = true;
+  setTimeout(() => { navWheelLocked = false; }, 180);
+  const currentIndex = navItems.indexOf(previewNavItem || currentNavItem);
+  const nextIndex = Math.max(0, Math.min(navItems.length - 1, currentIndex + Math.sign(event.deltaY)));
+  previewNavItem = navItems[nextIndex];
+  showNavTarget(previewNavItem);
+  previewNavItem.focus({ preventScroll: true });
+}, { passive: false });
+const refreshNavIndicator = () => showNavTarget(previewNavItem || currentNavItem);
+requestAnimationFrame(refreshNavIndicator);
+addEventListener('resize', refreshNavIndicator);
 
 // Header shrink + back-to-top
 const header = $('.site-header'), toTop = $('.to-top');
