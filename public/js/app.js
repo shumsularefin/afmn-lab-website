@@ -5,7 +5,8 @@ const strip = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&');
 const esc = s => s.replace(/[<>"]/g, c => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const NAV = [['index.html', 'Home'], ['research.html', 'Research'], ['publications.html', 'Publications'], ['team.html', 'Group'], ['profile.html', 'Principal Investigator'], ['teaching.html', 'Teaching'], ['news.html', 'News'], ['contact.html', 'Contact']];
-const page = location.pathname.split('/').pop() || 'index.html';
+const route = location.pathname.split('/').filter(Boolean).pop() || 'index';
+const page = route.endsWith('.html') ? route : `${route}.html`;
 const LINK_NAMES = { scholar: 'Google Scholar', researchgate: 'ResearchGate', orcid: 'ORCID', gstu: 'GSTU Faculty Page' };
 const extLinks = () => Object.entries(LINKS).filter(([, u]) => u);
 
