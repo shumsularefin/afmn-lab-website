@@ -1,0 +1,45 @@
+# Refreshes citations, metrics and new publications from Google Scholar, then redeploys.
+# Commits pushed with GITHUB_TOKEN do not start other workflows, so this job deploys itself.
+name: Update from Google Scholar
+on:
+  schedule:
+    - cron: '17 3 1,15 * *'   # 1st and 15th of each month, 03:17 UTC (09:17 in Bangladesh)
+  workflow_dispatch:
+permissions:
+  contents: write
+  checks: write
+concurrency: scholar-update
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r scripts/requirements.txt
+      - name: Read Google Scholar and update the site data
+        run: python scripts/update_scholar.py
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+      - name: Commit changes
+        id: commit
+        run: |
+          if git diff --quiet -- public; then
+            git diff --quiet || { git add scripts/scholar-state.json; git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Record Google Scholar items seen'; git push; }
+            echo "Website data unchanged."
+            exit 0
+          fi
+          git add public scripts/scholar-state.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Update citations and publications from Google Scholar ($(date -u +%Y-%m-%d))"
+          git push
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+      - name: Deploy to Firebase Hosting
+        if: steps.commit.outputs.deploy == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AFMN_LAB }}
+          channelId: live
+          projectId: afmn-lab

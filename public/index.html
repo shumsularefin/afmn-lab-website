@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Inter+Tight:ital,wght@0,400;0,500;0,700;0,900;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=15">
+<link rel="stylesheet" href="css/style.css?v=16">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -46,7 +46,7 @@
       <a href="team.html">Group</a>
       <a href="contact.html">Contact</a>
     </div>
-    <a class="lead-card" href="#lead">
+    <a class="pi-badge" href="#principal-investigator">
       <img src="images/portrait-400.jpg" alt="" width="400" height="399" decoding="async">
       <span><small>Principal Investigator</small><b>Prof. Md. Kamruzzaman</b><span>Professor &amp; Chairman, Dept. of ACCE, GSTU</span></span>
     </a>
@@ -75,7 +75,7 @@
   </div>
 </div></section>
 
-<section class="section lead-sec" id="lead"><div class="wrap lead">
+<section class="section pi-section" id="principal-investigator"><div class="wrap pi-block">
   <figure class="portrait">
     <img src="images/portrait.jpg" srcset="images/portrait-400.jpg 400w, images/portrait.jpg 638w" sizes="(max-width: 900px) 360px, 30vw" alt="Portrait of Prof. Md. Kamruzzaman" width="638" height="637" loading="lazy" decoding="async">
     <figcaption><span>Principal Investigator, AFMN Lab</span><span>Ph.D., Kyungpook National University</span></figcaption>
@@ -88,21 +88,44 @@
       <li><b>Professor</b><span>Applied Chemistry and Chemical Engineering, Gopalganj Science and Technology University</span></li>
       <li><b>Faculty Advisor</b><span>ACS Student Chapter and AIChE Student Chapter, GSTU</span></li>
     </ul>
-    <p class="lead-bio">Materials chemist and analytical chemist at Gopalganj Science and Technology University. Ph.D. in Analytical Chemistry, Kyungpook National University (2013). He is the Principal Investigator of the AFMN Lab.</p>
+    <p class="pi-bio">Materials chemist and analytical chemist at Gopalganj Science and Technology University. Ph.D. in Analytical Chemistry, Kyungpook National University (2013). He is the Principal Investigator of the AFMN Lab.</p>
     <div class="links">
       <a href="profile.html">Full profile</a>
-      <a href="profile.html#acs">Student chapters</a>
+      <a href="#student-chapters">Student chapters</a>
       <a href="CV-%20Dr.%20Kamruzzaman(2).pdf">Curriculum vitae (PDF)</a>
       <a href="mailto:mkamruzzamandu81@gmail.com">mkamruzzamandu81@gmail.com</a>
     </div>
   </div>
+</div>
+<div class="wrap chapters" id="student-chapters">
+  <div class="chapters-head">
+    <div class="label">Student chapters at GSTU</div>
+    <p>Prof. Kamruzzaman is Faculty Advisor of two professional student chapters at Gopalganj Science and Technology University.</p>
+  </div>
+  <article class="chapter">
+    <h3>American Chemical Society (ACS) Student Chapter</h3>
+    <p>Founding Faculty Advisor of the <a href="https://acs-gstu.web.app" target="_blank" rel="noopener">American Chemical Society Student Chapter, GSTU</a>, established in 2024 together with Co-Advisor S. M. Fazle Rabbi. The chapter runs outreach, workshops, career events and sustainability campaigns for students across the university, and has been recognised by the American Chemical Society.</p>
+    <ul class="awards">
+      <li><time>2025–2026</time><div><b>Outstanding Student Communities Award</b><span>American Chemical Society. The highest level of ACS recognition for a student chapter.</span></div></li>
+      <li><time>2024</time><div><b>Commendable Student Communities Award</b><span>American Chemical Society, in the chapter's first year.</span></div></li>
+      <li><time>2024</time><div><b>Chapter founded</b><span>Established at GSTU (then BSMRSTU) with Prof. Kamruzzaman as founding Faculty Advisor.</span></div></li>
+    </ul>
+    <p class="chapter-links"><a class="arrow" href="https://acs-gstu.web.app" target="_blank" rel="noopener">Chapter website</a> <a class="arrow" href="https://www.facebook.com/acs.gstu/" target="_blank" rel="noopener">Facebook</a></p>
+  </article>
+  <article class="chapter">
+    <h3>American Institute of Chemical Engineers (AIChE) Student Chapter</h3>
+    <p>Faculty Advisor of the AIChE Student Chapter at GSTU, which connects chemical engineering students with the professional community through technical events, competitions and career development.</p>
+    <ul class="awards">
+      <li class="aiche"><time>Current</time><div><b>Faculty Advisor, AIChE Student Chapter</b><span>American Institute of Chemical Engineers student chapter, Gopalganj Science and Technology University.</span></div></li>
+    </ul>
+  </article>
 </div></section>
 
 <section class="figures" aria-label="Research record of the Principal Investigator"><div class="wrap">
-  <p class="figures-note">Research record of Prof. Md. Kamruzzaman · Google Scholar, September 2026</p>
-  <div><b>575</b><span>Citations, Google Scholar</span></div>
-  <div><b>14</b><span>h-index</span></div>
-  <div><b>21</b><span>i10-index</span></div>
+  <p class="figures-note">Research record of Prof. Md. Kamruzzaman · Google Scholar, <span data-scholar="updated">September 2026</span></p>
+  <div><b data-scholar="citations">575</b><span>Citations, Google Scholar</span></div>
+  <div><b data-scholar="hIndex">14</b><span>h-index</span></div>
+  <div><b data-scholar="i10Index">21</b><span>i10-index</span></div>
   <div><b data-count="papers">60</b><span>Articles, reviews and chapters</span></div>
   <div><b data-count="abstracts">29</b><span>Conference presentations</span></div>
 </div></section>
@@ -115,7 +138,7 @@
   </div>
   <div>
     <h2>News</h2>
-    <ul class="news" data-news="6"></ul>
+    <ul class="news" data-news="6" data-news-skip="Student chapter"></ul>
     <p style="margin-top:20px"><a class="arrow" href="news.html">All news</a></p>
   </div>
 </div></section>
@@ -130,7 +153,8 @@
 
 </main>
 <div id="site-footer"></div>
-<script src="js/data.js?v=9"></script>
-<script src="js/app.js?v=16"></script>
+<script src="js/data.js?v=10"></script>
+<script src="js/scholar.js?v=10"></script>
+<script src="js/app.js?v=18"></script>
 </body>
 </html>

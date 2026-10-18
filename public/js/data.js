@@ -1,5 +1,5 @@
 // [year, type, citations, title, authors, venue]  type: j journal, r review, c chapter, a conference abstract
-// Citations from Google Scholar, Sept 2026. Update here when the profile changes.
+// Citation counts are refreshed from Google Scholar by scripts/update_scholar.py, which also adds new papers at the top.
 const PUBS = [
   [2026,'j',9,'Chitosan/MXene Biodegradable Films for Sustainable UV-Shielded Food Packaging Application','M.H. Munshi, M.D. Islam, M. Kamruzzaman, S.A. Hussain, S. Arefin, et al.','Packaging Technology and Science 39(6), 697–715','https://doi.org/10.1002/pts.70057'],
   [2026,'r',8,'Advancements in antibacterial textile fabrics with inorganic NPs: A review of synthesis, fabrication, performance evaluation, and applications','J.H. Emon, M.H. Munshi, M.A. Al Jaman, M. Kamruzzaman, K. Akter, S.R. Islam','Materials Today Communications 51, 114822','https://doi.org/10.1016/j.mtcomm.2026.114822'],
@@ -107,7 +107,7 @@ const CITES = {2012:7,2013:43,2014:39,2015:42,2016:41,2017:42,2018:27,2019:29,20
 
 // [date, tag, html]  newest first
 const NEWS = [
-  ['September 2026', 'Award', 'ACS Student Chapter, GSTU, advised by Prof. Kamruzzaman, receives the <strong>Outstanding ACS Student Communities Award 2025–2026</strong> from the American Chemical Society.'],
+  ['September 2026', 'Student chapter', 'ACS Student Chapter, GSTU, advised by Prof. Kamruzzaman, receives the <strong>Outstanding ACS Student Communities Award 2025–2026</strong> from the American Chemical Society.'],
   ['1 July 2026', 'Milestone', 'Md. Kamruzzaman promoted to Professor of Applied Chemistry and Chemical Engineering at GSTU.'],
   ['2026', 'Paper', 'Graphitic C<sub>3</sub>N<sub>4</sub>-reinforced PMMA films for UV shielding accepted in <em>Materials Chemistry and Physics</em>.'],
   ['2026', 'Paper', 'Chitosan/MXene biodegradable films for UV-shielded food packaging published in <em>Packaging Technology and Science</em>.'],
@@ -120,8 +120,8 @@ const NEWS = [
   ['2025', 'Paper', 'PVA bioplastic film with duck-feather keratin published in <em>Results in Materials</em>.'],
   ['2025', 'Review', 'MXene/chitosan nanocomposites for industrial applications, a 52-page review in <em>Discover Nano</em>.'],
   ['2024', 'Chapter', 'Chapter on emerging contaminants in <em>Development in Wastewater Treatment Research and Processes</em> (Elsevier).'],
-  ['2024', 'Award', 'ACS Student Chapter, GSTU receives a Commendable Student Communities Award from the American Chemical Society.'],
-  ['2024', 'Milestone', 'ACS Student Chapter founded at GSTU (then BSMRSTU), with Dr. Kamruzzaman as Faculty Advisor and S. M. Fazle Rabbi as Co-Advisor.'],
+  ['2024', 'Student chapter', 'ACS Student Chapter, GSTU receives a Commendable Student Communities Award from the American Chemical Society.'],
+  ['2024', 'Student chapter', 'ACS Student Chapter founded at GSTU (then BSMRSTU), with Dr. Kamruzzaman as Faculty Advisor and S. M. Fazle Rabbi as Co-Advisor.'],
   ['2021', 'Milestone', 'Promoted to Associate Professor, BSMRSTU (now GSTU).'],
   ['2018', 'Milestone', 'Joined the Department of Applied Chemistry &amp; Chemical Engineering, BSMRSTU, as Assistant Professor.'],
   ['2013', 'Milestone', 'Ph.D. in Analytical Chemistry awarded by Kyungpook National University, Korea.'],
