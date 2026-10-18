@@ -19,12 +19,12 @@ const LOGO = (light = false) => `<svg viewBox="0 0 64 64" aria-hidden="true"><de
 const navLinks = NAV.map(([h, t]) => `<a href="${h}"${h === page ? ' aria-current="page"' : ''}>${t}</a>`).join('');
 $('#site-header').outerHTML = `
 <header class="site-header"><div class="wrap">
-  <a class="mark" href="index.html" aria-label="AFMN Lab, Principal Investigator Prof. Md. Kamruzzaman, home">${LOGO()}<span class="wm"><span class="wm-name">AFMN Lab</span><span class="wm-lead">Principal Investigator: Prof. Md. Kamruzzaman</span></span></a>
+  <a class="mark" href="index.html" aria-label="AFMN Lab, Principal Investigator Prof. Md. Kamruzzaman, home">${LOGO()}<span class="wm"><span class="wm-name">AFMN Lab</span><span class="wm-pi">Principal Investigator: Prof. Md. Kamruzzaman</span></span></a>
   <div class="hdr-right"><button class="menu-btn" aria-expanded="false" aria-controls="menu"><span class="sr">Menu</span><i></i></button><span class="org">ACCE · GSTU</span></div>
 </div></header>
 <div class="menu" id="menu" role="dialog" aria-modal="true" aria-label="Site menu">
   <div class="wrap menu-top">
-    <a class="mark" href="index.html" aria-label="AFMN Lab, Principal Investigator Prof. Md. Kamruzzaman, home">${LOGO()}<span class="wm"><span class="wm-name">AFMN Lab</span><span class="wm-lead">Principal Investigator: Prof. Md. Kamruzzaman</span></span></a>
+    <a class="mark" href="index.html" aria-label="AFMN Lab, Principal Investigator Prof. Md. Kamruzzaman, home">${LOGO()}<span class="wm"><span class="wm-name">AFMN Lab</span><span class="wm-pi">Principal Investigator: Prof. Md. Kamruzzaman</span></span></a>
     <button class="menu-close" aria-label="Close menu"></button>
   </div>
   <div class="wrap" style="flex:1;display:flex;flex-direction:column"><div class="menu-panel">
@@ -216,7 +216,8 @@ if (sel) sel.innerHTML = PUBS.map((p, i) => [p, i]).filter(([p]) => p[1] === 'j'
   .sort(([a], [b]) => b[0] - a[0] || b[2] - a[2]).slice(0, +sel.dataset.limit || 5).map(([p, i]) => pubItem(p, i, true)).join('');
 
 // ---------- News ----------
-$$('[data-news]').forEach(el => el.innerHTML = NEWS.slice(0, +el.dataset.news || NEWS.length)
+// data-news-skip="Tag" leaves out items with that tag (the home page shows student-chapter items in the Principal Investigator section)
+$$('[data-news]').forEach(el => el.innerHTML = NEWS.filter(([, tag]) => tag !== el.dataset.newsSkip).slice(0, +el.dataset.news || NEWS.length)
   .map(([d, , html]) => `<li><time>${d}</time>${html}</li>`).join(''));
 
 // ---------- Group ----------
@@ -239,7 +240,7 @@ if (!list) buildSecnav();
 // ---------- Scroll reveal ----------
 if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
-  $$('.sec-head, .lead > *, .index a.row, .figures .wrap > div, .honours > *, .split > *, .roster > div, .awards li, .content figure, .person, .pi-card').forEach((el, i) => {
+  $$('.sec-head, .pi-block > *, .index a.row, .figures .wrap > div, .honours > *, .split > *, .roster > div, .awards li, .content figure, .person, .pi-card').forEach((el, i) => {
     el.classList.add('reveal'); el.style.transitionDelay = (i % 4) * 60 + 'ms'; io.observe(el);
   });
 }
