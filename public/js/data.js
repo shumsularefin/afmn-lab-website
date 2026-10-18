@@ -1,5 +1,5 @@
 // [year, type, citations, title, authors, venue]  type: j journal, r review, c chapter, a conference abstract
-// Citations from Google Scholar, Sept 2026. Update here when the profile changes.
+// Citation counts are refreshed from Google Scholar by scripts/update_scholar.py, which also adds new papers at the top.
 const PUBS = [
   [2026,'j',9,'Chitosan/MXene Biodegradable Films for Sustainable UV-Shielded Food Packaging Application','M.H. Munshi, M.D. Islam, M. Kamruzzaman, S.A. Hussain, S. Arefin, et al.','Packaging Technology and Science 39(6), 697–715','https://doi.org/10.1002/pts.70057'],
   [2026,'r',8,'Advancements in antibacterial textile fabrics with inorganic NPs: A review of synthesis, fabrication, performance evaluation, and applications','J.H. Emon, M.H. Munshi, M.A. Al Jaman, M. Kamruzzaman, K. Akter, S.R. Islam','Materials Today Communications 51, 114822','https://doi.org/10.1016/j.mtcomm.2026.114822'],

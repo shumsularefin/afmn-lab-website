@@ -500,6 +500,7 @@ td a, .ids a, .menu-aside a, .site-footer a, .links a { overflow-wrap: anywhere;
 .pi-block .roles li.chair { background: #000; }
 .pi-bio { font-size: 19px; color: var(--ink-2); max-width: 40em; margin-bottom: 28px; }
 .figures-note { grid-column: 1 / -1; margin: 0 0 8px; font: 700 14px/1.3 var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--aqua); }
+.figures .figures-note span { display: inline; margin: 0; padding: 0; border: 0; font: inherit; color: inherit; }
 .site-footer p a { text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .4); }
 @media (max-width: 900px) { .pi-block { grid-template-columns: 1fr; gap: 36px; } .pi-block .portrait { max-width: 320px; order: 0; } }
 @media (max-width: 600px) { .pi-badge { margin-top: 28px; width: 100%; } .pi-badge img { width: 52px; height: 52px; } .pi-bio { font-size: 17px; } .figures-note { font-size: 12px; } }

@@ -48,7 +48,7 @@ $('#site-footer').outerHTML = `
     <div><h4>&nbsp;</h4><ul>${NAV.slice(4).map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul></div>
     <div><h4>Profiles</h4><ul>${extLinks().map(([k, u]) => `<li><a href="${u}" target="_blank" rel="noopener">${LINK_NAMES[k]}</a></li>`).join('')}<li><a href="mailto:mkamruzzamandu81@gmail.com">Email</a></li></ul></div>
   </div>
-  <div class="base"><span>© ${new Date().getFullYear()} AFMN Lab, Gopalganj Science and Technology University. Principal Investigator: Prof. Md. Kamruzzaman.</span><span>Citation data: Google Scholar, September 2026</span></div>
+  <div class="base"><span>© ${new Date().getFullYear()} AFMN Lab, Gopalganj Science and Technology University. Principal Investigator: Prof. Md. Kamruzzaman.</span><span>Citation data: Google Scholar, ${scholarValue('updated')}</span></div>
 </div></footer><div class="toast" role="status"></div><button class="to-top" type="button" aria-label="Back to top"></button>`;
 
 // Menu overlay
@@ -105,6 +105,14 @@ toTop.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
 
 $$('[data-links]').forEach(el => el.innerHTML = extLinks().map(([k, u]) =>
   `<a href="${u}" target="_blank" rel="noopener"><small>${LINK_NAMES[k]}</small>${u.replace(/^https?:\/\/(www\.)?/, '').replace(/[?&].*$/, '').slice(0, 44)}</a>`).join(''));
+
+// ---------- Google Scholar metrics (js/scholar.js, refreshed on the 1st and 15th by .github/workflows/scholar-update.yml) ----------
+function scholarValue(key) {
+  if (typeof SCHOLAR === 'undefined') return '';
+  if (key === 'updated') return new Date(SCHOLAR.updated + 'T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return key === 'sinceYear' ? String(SCHOLAR[key]) : SCHOLAR[key].toLocaleString('en-US');
+}
+$$('[data-scholar]').forEach(el => { const v = scholarValue(el.dataset.scholar); if (v) el.textContent = v; });
 
 const papers = PUBS.filter(p => p[1] !== 'a');
 $$('[data-count]').forEach(el => el.textContent = { papers: papers.length, abstracts: PUBS.length - papers.length }[el.dataset.count]);
