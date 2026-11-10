@@ -2,6 +2,10 @@
 
 Static website for the Advanced Functional Materials and Nanotechnology Laboratory at GSTU.
 
+## Lab Dashboard
+
+Almost everything on the site (members and their photos, publications, news, research areas, instruments, openings, announcements, gallery, teaching, the PI profile and contact details) is edited in the **Lab Dashboard** at `/admin.html`, with Google sign-in, roles, drafts, preview, publishing and an activity log. It follows the ACS GSTU Chapter Editor and runs on the free Firebase plan. See [DASHBOARD.md](DASHBOARD.md) for the editor guide and the one-time Firebase setup (Firestore, Google sign-in, security rules).
+
 ## Deploying with Firebase Hosting
 
 The site is served from `public/`. Firebase Hosting deploys pushes to `main` to the live channel and creates preview deployments for pull requests. Firebase CLI stores the deployment credential in the repository secret `FIREBASE_SERVICE_ACCOUNT_AFMN_LAB`.
@@ -20,6 +24,6 @@ It then commits the changes and redeploys to Firebase. If Scholar cannot be read
 
 Google Scholar sometimes blocks requests from GitHub's servers. For reliable runs, create a free account at [serpapi.com](https://serpapi.com) (the free plan covers this easily) and save its API key as the repository secret `SERPAPI_KEY`. The script tries Scholar directly first and falls back to SerpApi.
 
-Automatically added entries can be edited by hand in `public/js/data.js` like any other entry (for example to correct the type: `j` article, `r` review, `c` chapter, `a` conference). `scripts/scholar-state.json` records which Scholar items have been seen, so an entry you delete is not added again.
+Once the publication list has been published from the Lab Dashboard, new Scholar papers appear in its **New from Google Scholar** box (they show on the website meanwhile) and are edited there. Before that, automatically added entries can be edited by hand in `public/js/data.js` like any other entry (for example to correct the type: `j` article, `r` review, `c` chapter, `a` conference). `scripts/scholar-state.json` records which Scholar items have been seen, so an entry you delete is not added again.
 
 To run it by hand: `pip install -r scripts/requirements.txt && python scripts/update_scholar.py` (add `--dry-run` to preview). If Scholar blocks you, save the profile page from your browser and run `python scripts/update_scholar.py --html saved-page.html`.

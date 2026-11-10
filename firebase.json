@@ -1,4 +1,13 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "emulators": {
+    "firestore": { "host": "127.0.0.1", "port": 8080 },
+    "auth": { "host": "127.0.0.1", "port": 9099 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  },
   "hosting": {
     "public": "public",
     "ignore": [
@@ -7,6 +16,12 @@
       "**/node_modules/**"
     ],
     "cleanUrls": true,
-    "trailingSlash": false
+    "trailingSlash": false,
+    "headers": [
+      { "source": "/js/published.js", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] },
+      { "source": "/js/admin/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] },
+      { "source": "/admin.html", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] },
+      { "source": "/media/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] }
+    ]
   }
 }
