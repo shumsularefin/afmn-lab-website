@@ -1,0 +1,137 @@
+rules_version = '2';
+
+// AFMN Lab website — Firestore security rules (same model as the ACS GSTU Chapter Editor).
+//
+//   site/meta              public   revision counter; public pages compare it with their baked copy
+//   content/{section}      public   one document per editable section: { data, revision, updatedAt, updatedBy, updatedByEmail, auditId }
+//   siteImages/{id}        public   uploaded, optimized JPEG images (media:<id>)
+//   labEditors/{email}     private  dashboard access granted by a super-admin
+//   auditLogs/{id}         private  append-only activity log with server timestamps
+//   removals/{key}         private  ties each deletion to its log entry
+//
+// Only Google sign-in counts. Every write carries an auditId; the rules check that the log entry is
+// created in the same request, by the same person, with the same server time.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- identity
+
+    function signedInWithGoogle() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function email() { return request.auth.token.email.lower(); }
+    function isOwner() { return email() == 'muhammadshamsularefin01@gmail.com'; }
+    function grantPath() { return /databases/$(database)/documents/labEditors/$(email()); }
+    function grantedRole() {
+      return exists(grantPath()) && get(grantPath()).data.active == true ? get(grantPath()).data.role : '';
+    }
+    function role() { return !signedInWithGoogle() ? '' : isOwner() ? 'super-admin' : grantedRole(); }
+    function isSuperAdmin() { return role() == 'super-admin'; }
+    function isEditor() { return role() in ['super-admin', 'editor', 'contributor']; }
+    function maySection(section) {
+      return role() in ['super-admin', 'editor']
+        || (role() == 'contributor' && section in ['news', 'publications', 'gallery']);
+    }
+
+    // ---------------------------------------------------------------- audit
+
+    function logAt(id) { return getAfter(/databases/$(database)/documents/auditLogs/$(id)).data; }
+    function freshLog(id) {
+      return id is string && id.size() > 0 && id.size() <= 40
+        && logAt(id).actorUid == request.auth.uid && logAt(id).createdAt == request.time;
+    }
+    function audited(id, action, target) {
+      return freshLog(id) && logAt(id).action == action && logAt(id).target == target;
+    }
+    function removed(key, action, target) {
+      return audited(getAfter(/databases/$(database)/documents/removals/$(key)).data.auditId, action, target);
+    }
+    function nextRevision() {
+      let d = request.resource.data;
+      return d.revision is int && d.revision == (resource == null ? 1 : resource.data.get('revision', 0) + 1);
+    }
+
+    match /auditLogs/{id} {
+      allow read: if isSuperAdmin();
+      allow create: if isEditor()
+        && request.resource.data.keys().hasOnly(['actorUid', 'actorEmail', 'action', 'target', 'detail', 'createdAt'])
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorEmail == email()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.action in ['content.update', 'image.add', 'image.delete', 'access.set', 'access.delete']
+        && request.resource.data.target is string && request.resource.data.target.size() <= 200
+        && request.resource.data.detail is string && request.resource.data.detail.size() <= 1000;
+      allow update, delete: if false;
+    }
+
+    match /removals/{key} {
+      allow read: if isSuperAdmin();
+      allow create, update: if isEditor() && request.resource.data.keys().hasOnly(['auditId']) && freshLog(request.resource.data.auditId);
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------- website content
+
+    match /site/{doc} {
+      allow get: if doc == 'meta';
+      allow list: if false;
+      allow create, update: if doc == 'meta' && isEditor()
+        && request.resource.data.keys().hasOnly(['revision', 'section', 'updatedAt', 'updatedBy', 'updatedByEmail'])
+        && nextRevision() && request.resource.data.section is string && request.resource.data.section.size() <= 40
+        && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedByEmail == email();
+      allow delete: if false;
+    }
+
+    match /content/{section} {
+      allow get, list: if true;
+      allow create, update: if section in ['site', 'notices', 'home', 'pi', 'research', 'instruments', 'team', 'publications', 'news', 'openings', 'gallery', 'teaching']
+        && maySection(section)
+        && request.resource.data.keys().hasOnly(['data', 'revision', 'updatedAt', 'updatedBy', 'updatedByEmail', 'auditId'])
+        && request.resource.data.data is map
+        && nextRevision()
+        && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedByEmail == email()
+        && audited(request.resource.data.auditId, 'content.update', section);
+      allow delete: if false;
+    }
+
+    match /siteImages/{id} {
+      allow get: if true;
+      allow list: if isEditor();
+      allow create: if isEditor() && id.matches('^[a-f0-9-]{36}$')
+        && request.resource.data.keys().hasOnly(['image', 'name', 'createdBy', 'createdByEmail', 'createdAt', 'auditId'])
+        && request.resource.data.image is string && request.resource.data.image.size() <= 280000
+        && request.resource.data.image.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+        && request.resource.data.name is string && request.resource.data.name.size() <= 150
+        && request.resource.data.createdBy == request.auth.uid && request.resource.data.createdByEmail == email()
+        && request.resource.data.createdAt == request.time
+        && audited(request.resource.data.auditId, 'image.add', id);
+      allow update: if false;
+      allow delete: if isEditor() && (isSuperAdmin() || resource.data.createdBy == request.auth.uid)
+        && removed('siteImages:' + id, 'image.delete', id);
+    }
+
+    // ---------------------------------------------------------------- access
+
+    match /labEditors/{editor} {
+      allow get: if signedInWithGoogle() && (isSuperAdmin() || email() == editor);
+      allow list: if isSuperAdmin();
+      allow create, update: if isSuperAdmin() && editor != 'muhammadshamsularefin01@gmail.com'
+        && request.resource.data.keys().hasOnly(['email', 'name', 'role', 'active', 'auditId', 'updatedAt', 'updatedBy'])
+        && request.resource.data.email == editor && editor.size() <= 200
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.role in ['super-admin', 'editor', 'contributor'] && request.resource.data.active is bool
+        && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid
+        && audited(request.resource.data.auditId, 'access.set', editor);
+      allow delete: if isSuperAdmin() && editor != 'muhammadshamsularefin01@gmail.com'
+        && removed('labEditors:' + editor, 'access.delete', editor);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

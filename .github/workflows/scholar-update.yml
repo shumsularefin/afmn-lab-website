@@ -35,6 +35,13 @@ jobs:
             commit -m "Update citations and publications from Google Scholar ($(date -u +%Y-%m-%d))"
           git push
           echo "deploy=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        if: steps.commit.outputs.deploy == 'true'
+        with:
+          node-version: '22'
+      - name: Bake content published from the Lab Dashboard
+        if: steps.commit.outputs.deploy == 'true'
+        run: node scripts/bake-content.mjs
       - name: Deploy to Firebase Hosting
         if: steps.commit.outputs.deploy == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
