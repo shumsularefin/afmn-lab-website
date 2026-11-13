@@ -126,6 +126,8 @@
       fullName: 'Prof. Md. Kamruzzaman, Ph.D.',
       photo: 'images/portrait.jpg',
       email: 'mkamruzzamandu81@gmail.com',
+      cv: 'CV-%20Dr.%20Kamruzzaman(2).pdf',
+      website: '',
       positions: [
         { title: 'Chairman', place: 'Department of Applied Chemistry and Chemical Engineering (ACCE), GSTU', highlight: true },
         { title: 'Professor', place: 'Applied Chemistry and Chemical Engineering, Gopalganj Science and Technology University', highlight: false },
@@ -308,6 +310,7 @@
         topic: m.topic || '',
         photo: m.photo || '',
         email: '',
+        website: m.website || '',
         period: '',
         now: '',
         links: Object.entries(m.links || {}).map(([k, url]) => ({ label: LINK_NAMES[k] || k, url })),
@@ -331,6 +334,9 @@
       intro:
         'The group takes B.Sc. thesis and M.Sc. students each year. Applicants should have a background in chemistry, chemical engineering or materials science and an interest in nanomaterials, polymer films or analytical methods.',
       positions: [],
+      applyForm: '',
+      applyLink: '',
+      applyLabel: 'Apply online',
       howToApply: 'Please write to Prof. Kamruzzaman with a CV, an academic transcript and a short note on the problems you would like to work on.',
     },
     gallery: {

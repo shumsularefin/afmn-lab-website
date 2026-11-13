@@ -10,18 +10,22 @@ It runs on the free Firebase Spark plan: Hosting, Google sign-in and Firestore. 
 | --- | --- |
 | Home page | Hero title, introduction and picture, the texts beside Research and The group, how many publications and news items to show, whether the student chapters and research figures show |
 | Announcements | Bars at the top of every page (or the home page only) for seminars, deadlines, awards or closures, each with optional start and end dates, link and style |
-| Principal Investigator | Name, portrait, positions, short and full biography, appointments, education, research interests, honours and awards, teaching and service, student chapters with their awards and links |
+| Principal Investigator | Name, portrait, **CV (upload a PDF up to 5 MB, or paste a link)**, personal website, positions, short and full biography, appointments, education, research interests, honours and awards, teaching and service, student chapters with their awards and links |
 | Research | Research areas (title, home-page summary, figure, caption, description, selected papers), current projects, funding and grants, collaborators |
 | Instruments | Instruments and facilities with category, make and model, use, photo, and status (available, under maintenance, coming soon) |
-| Group members | Current members, collaborators and alumni with photo, position, topic, years, email, current position (alumni) and profile links; order with ↑ ↓ |
+| Group members | Current members, collaborators and alumni with photo, position, topic, years, email, current position (alumni), **personal website** (their name links to it) and profile links; order with ↑ ↓ |
 | Publications | Every publication (add one from its DOI with **Fill in from DOI**), citations, type, and which to feature on the home page. New papers found by the Google Scholar update appear in a **New from Google Scholar** box |
 | News | Dated news with tags and an optional “More” link. Scholar-announced papers appear in the same suggestion box |
-| Openings & recruiting | The **Join us** page: positions with kind, deadline, description, requirements and where to apply. Open positions also show in a black “We are recruiting” strip on the home page and close by themselves after the deadline |
+| Openings & recruiting | The **Join us** page: positions with kind, deadline, description, requirements and how to apply: an **in-house form** (see Forms), a **Google Form or other link**, or an email address. A general **Apply online** button can point to a form too. Open positions also show in a black “We are recruiting” strip on the home page and close by themselves after the deadline |
 | Gallery | Photos with caption, album and date. The Gallery page appears in the menu once it has a photo |
 | Teaching | Courses with links to materials, thesis supervision, previous teaching |
 | Site & contact | Lab name, PI name and title, email, phones, address, map position, CV link, and the profile links used in the menu, footer, profile and contact pages |
 
 Managing pages (super-admin): **Editors & activity**, **Backups**. Everyone: **Image library**, **Your account**.
+
+**Forms** (lab editors and super-admins): build application and registration forms on the website itself, like Google Forms, starting from a ready **Recruitment application** template (name, contact, position, institution, CGPA, research interests, statement, CV link, start date) or a blank form. Each form has its own address such as `https://afmn-lab.web.app/form/msc-2027`, can close by itself on a date, and keeps its answers private: only lab editors and super-admins can read them in the dashboard and download them for Excel (CSV). Choose a form under **Openings & recruiting** to give a position an Apply button. Google Forms keep working too: paste the link instead.
+
+**Logo:** the AFMN Lab logo (`public/images/brand/`, made from `brand/AFMN_lablogo.ai`) is in the header, footer, dashboard and browser tab.
 
 ## Editing
 
@@ -83,6 +87,8 @@ Visitors: pages render the baked content at once, then check site/meta (at most 
 
 Until steps 1–4 are done the website keeps working exactly as before; the dashboard explains what is missing.
 
+Uploaded PDFs are stored in Firestore in pieces (`siteFiles/{id}/chunks`), because Cloud Storage needs a paid plan; each deploy writes them out as `files/<id>.pdf`. After this update, **deploy the security rules again** (they add documents and forms).
+
 ## Free-tier limits (Spark)
 
 Firestore allows 50,000 reads and 20,000 writes a day for free. A visitor costs at most one read per five minutes (the freshness check), plus the content once after each publish until the next deploy bakes it in. Each uploaded image is stored at up to about 280 KB and costs nothing once baked into the site.
@@ -98,4 +104,4 @@ Firestore allows 50,000 reads and 20,000 writes a day for free. A visitor costs 
 npx firebase-tools emulators:start --only firestore,auth --project demo-afmn
 ```
 
-Serve `public/` (for example `python3 -m http.server 8102 -d public`), open `http://127.0.0.1:8102/admin.html`, and in the browser console run `localStorage.setItem('afmn-emulator', 'http://127.0.0.1:8080|demo-afmn')`, reload, then `labDashboard.testSignIn('muhammadshamsularefin01@gmail.com')`. The emulator accepts test accounts; real Firebase does not. `tests/dashboard.e2e.cjs` runs the whole flow (sign-in, upload, publish, validation, roles, rules, public pages) with Playwright.
+Serve `public/` (for example `python3 -m http.server 8102 -d public`), open `http://127.0.0.1:8102/admin.html`, and in the browser console run `localStorage.setItem('afmn-emulator', 'http://127.0.0.1:8080|demo-afmn')`, reload, then `labDashboard.testSignIn('muhammadshamsularefin01@gmail.com')`. The emulator accepts test accounts; real Firebase does not. `tests/dashboard.e2e.cjs` and `tests/features.e2e.cjs` (CV, websites, logo, forms) run the whole flow (sign-in, upload, publish, validation, roles, rules, public pages) with Playwright.

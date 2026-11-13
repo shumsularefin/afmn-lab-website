@@ -28,6 +28,10 @@ const periodRows = (key, label, { period = 'Period', title = 'Title', detail = '
   ],
 });
 
+
+/** In-house forms, for “apply with a form” choices. */
+const formOptions = () => [['', 'None'], ...((window.labDashboard?.data?.forms || []).map((f) => [f.value.id, `${f.value.title} (${f.value.status === 'open' ? 'open' : f.value.status === 'draft' ? 'hidden draft' : 'closed'})`]))];
+
 export const SECTIONS = [
   {
     id: 'home',
@@ -94,6 +98,8 @@ export const SECTIONS = [
       { key: 'photoCaption', label: 'Photo caption, left', type: 'text', max: 80, half: true },
       { key: 'photoCaption2', label: 'Photo caption, right', type: 'text', max: 80, half: true },
       { key: 'email', label: 'Email', type: 'email', max: 200 },
+      { key: 'cv', label: 'Curriculum vitae (PDF)', type: 'file', max: 500, hint: 'Upload the latest CV as a PDF (up to 5 MB), or paste a link to it (for example Google Drive, shared with “Anyone with the link”). Empty hides the CV buttons. Publish to replace the CV on the website.' },
+      { key: 'website', label: 'Personal website (optional)', type: 'url', max: 500, hint: 'Shown on the profile and group pages.' },
       {
         key: 'positions',
         label: 'Current positions',
@@ -246,6 +252,7 @@ export const SECTIONS = [
           { key: 'topic', label: 'Research topic', type: 'text', max: 300, hint: INLINE },
           { key: 'period', label: 'Years in the lab', type: 'text', max: 40, half: true, hint: 'Optional, for example 2023 – 2025' },
           { key: 'email', label: 'Email (shown publicly)', type: 'email', max: 200, half: true },
+          { key: 'website', label: 'Personal website', type: 'url', max: 500, hint: 'Optional. Their name on the Group page links here, for example https://username.github.io' },
           { key: 'now', label: 'Current position (alumni)', type: 'text', max: 300, hint: 'Optional, for example PhD student, University of Tokyo' },
           linkList('Profile links', 'Google Scholar, ResearchGate, ORCID, LinkedIn…'),
         ],
@@ -333,12 +340,16 @@ export const SECTIONS = [
           { key: 'kind', label: 'Kind', type: 'text', max: 60, half: true, list: ['B.Sc. thesis', 'M.Sc. thesis', 'PhD', 'Research Assistant', 'Postdoc', 'Internship', 'Volunteer'] },
           { key: 'status', label: 'Status', type: 'select', half: true, options: [['open', 'Open'], ['closed', 'Closed']] },
           { key: 'deadline', label: 'Apply by', type: 'date', half: true, hint: 'Optional' },
-          { key: 'apply', label: 'Apply at (email or link)', type: 'text', max: 500, half: true, hint: 'Empty = the lab email' },
+          { key: 'form', label: 'Application form (built in Forms)', type: 'select', options: formOptions, half: true, hint: 'An in-house form from the Forms page. Its answers stay private in the dashboard.' },
+          { key: 'apply', label: 'Or apply at: Google Form, other link or email', type: 'text', max: 500, half: true, hint: 'Used when no in-house form is chosen. Paste a Google Form link (https://forms.gle/…) or an email address. Empty = the lab email.' },
           { key: 'summary', label: 'Description', type: 'rich', rows: 5, max: 4000, hint: RICH },
           { key: 'requirements', label: 'Requirements', type: 'lines', rows: 4, hint: 'One per line.' },
         ],
       },
       { key: 'howToApply', label: 'How to apply', type: 'rich', rows: 3, max: 2000, hint: RICH },
+      { key: 'applyForm', label: 'General application form (built in Forms)', type: 'select', options: formOptions, half: true, hint: 'Shows an “Apply online” button on the Join us page, even when no specific position is open.' },
+      { key: 'applyLink', label: 'Or a Google Form / other link', type: 'url', max: 500, half: true, hint: 'Used when no in-house form is chosen.' },
+      { key: 'applyLabel', label: 'Button text', type: 'text', max: 60, hint: 'For example “Apply online” or “Express interest”.' },
     ],
   },
   {
@@ -428,7 +439,6 @@ export const SECTIONS = [
       { key: 'mapLon', label: 'Map longitude', type: 'text', max: 20, half: true },
       { key: 'contactIntro', label: 'Contact page introduction', type: 'textarea', rows: 2, max: 500 },
       { key: 'contactButton', label: 'Button above the footer', type: 'text', max: 60 },
-      { key: 'cvUrl', label: 'Curriculum vitae (PDF) link', type: 'url', max: 500, hint: 'A link to the PDF, for example on Google Drive (set to “Anyone with the link”). Empty hides the CV buttons.' },
       linkList('Profile links (menu, footer, profile and contact pages)'),
     ],
   },

@@ -5,7 +5,8 @@ import { connect, ConflictError, permissions, roleInfo, OWNER_EMAIL } from './cl
 import { createDrafts } from './drafts.js';
 import { SECTIONS, sectionById } from './schema.js';
 import { createForm, validate } from './form.js';
-import { chooseImage } from './images.js';
+import { chooseImage, openDocument } from './images.js';
+import { formsView } from './forms-view.js';
 import { $, $$, h, toast, confirmDialog, openDialog, errorMessage, busy, when, clock, download, field, select, formValues } from './ui.js';
 
 const LAB = window.LAB;
@@ -230,15 +231,31 @@ const overviewView = {
   },
 };
 
-const ACTIONS = { 'content.update': 'Published', 'image.add': 'Uploaded image', 'image.delete': 'Deleted image', 'access.set': 'Changed access for', 'access.delete': 'Removed editor' };
+const ACTIONS = { 'content.update': 'Published', 'image.add': 'Uploaded image', 'image.delete': 'Deleted image', 'file.add': 'Uploaded document', 'file.delete': 'Deleted document', 'form.create': 'Created form', 'form.update': 'Saved form', 'form.delete': 'Deleted form', 'form.responses.delete': 'Deleted responses of form', 'access.set': 'Changed access for', 'access.delete': 'Removed editor' };
 
 const libraryView = {
   id: 'images',
   title: 'Image library',
   icon: '🗂',
   render(root) {
-    root.innerHTML = '<section class="ed-card"><p>Every image uploaded through the dashboard, where it is used, and who uploaded it. Images in use cannot be deleted. Uploads are resized and compressed automatically, so photos straight from a phone are fine.</p><button type="button" class="ed-btn ed-btn-primary" data-open>Open the image library</button></section>';
+    root.innerHTML = '<section class="ed-card"><p>Every image uploaded through the dashboard, where it is used, and who uploaded it. Images in use cannot be deleted. Uploads are resized and compressed automatically, so photos straight from a phone are fine.</p><button type="button" class="ed-btn ed-btn-primary" data-open>Open the image library</button></section><section class="ed-card"><div class="ed-card-head"><h3>Uploaded documents (PDF)</h3></div><p>Documents such as the CV. Upload a new CV under <a href="#section/pi">Principal Investigator</a>; old versions can be deleted here once nothing uses them.</p><div data-docs><p class="ed-muted">Loading…</p></div></section>';
     $('[data-open]', root).addEventListener('click', () => chooseImage(app, '', { manage: true }));
+    const docsBox = $('[data-docs]', root);
+    const drawDocs = async () => {
+      const docs = (await app.cloud.documents()).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+      const used = JSON.stringify([app.data.sections, app.drafts.all()]);
+      docsBox.innerHTML = docs.length
+        ? `<ul class="ed-list">${docs.map((d) => `<li class="ed-doc"><span><strong>${h(d.name)}</strong> · ${Math.round(d.size / 1024)} KB · ${h(when(d.createdAt))} · ${used.includes(d.reference) ? 'In use' : 'Not used'}</span><div class="ed-actions"><button type="button" class="ed-btn ed-btn-small" data-open-doc="${h(d.reference)}">Open</button>${!used.includes(d.reference) && (app.perms.deleteAnyImage || d.createdBy === app.user.uid) ? `<button type="button" class="ed-btn ed-btn-small ed-btn-danger-quiet" data-del-doc="${h(d.id)}" data-name="${h(d.name)}">Delete</button>` : ''}</div></li>`).join('')}</ul>`
+        : '<p class="ed-muted">No documents uploaded yet.</p>';
+    };
+    busy(null, '', drawDocs);
+    docsBox.addEventListener('click', async (e) => {
+      const o = e.target.closest('[data-open-doc]');
+      if (o) await busy(o, 'Opening…', () => openDocument(app, o.dataset.openDoc));
+      const d = e.target.closest('[data-del-doc]');
+      if (d && (await confirmDialog({ title: `Delete ${d.dataset.name}?`, body: '<p>It is removed for good.</p>', confirm: 'Delete', danger: true })))
+        await busy(d, 'Deleting…', async () => { await app.cloud.deleteDocument(d.dataset.delDoc, d.dataset.name); toast('Document deleted.'); await drawDocs(); });
+    });
   },
 };
 
@@ -378,7 +395,7 @@ const accountView = {
   },
 };
 
-const views = [overviewView, libraryView, editorsView, backupsView, accountView];
+const views = [overviewView, formsView, libraryView, editorsView, backupsView, accountView];
 
 // ------------------------------------------------------------------ navigation and rendering
 
@@ -428,7 +445,7 @@ function render() {
   const { view, params } = app.route;
   if (view === 'section') return sectionView.render(main, params);
   const v = views.find((x) => x.id === view && (!x.allowed || x.allowed(app.perms))) || overviewView;
-  v.render(main, params);
+  v.render(main, params, app);
 }
 
 function showDraftsDrawer() {

@@ -562,3 +562,50 @@ table.data .inst-img { float: right; width: 120px; height: 90px; object-fit: cov
 .lightbox p { margin: 10px 0 0; font-size: 16px; }
 .lightbox form { text-align: right; }
 .lightbox form button { background: none; border: 0; font-size: 28px; cursor: pointer; line-height: 1; }
+
+/* ---------- AFMN Lab logo ---------- */
+.mark { gap: 18px; }
+.mark .logo { height: 50px; width: auto; flex: none; }
+.mark .wm { padding-left: 18px; border-left: 2px solid #161f34; }
+.mark .wm-pi { display: flex; flex-direction: column; gap: 2px; font: 500 12px/1.2 var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.mark .wm-pi b { font: 700 16px/1.15 var(--sans); letter-spacing: -.01em; text-transform: none; color: #161f34; }
+.site-header.scrolled .mark .logo { height: 42px; }
+.site-footer .name { display: block; }
+.site-footer .name .logo { height: 60px; width: auto; }
+.site-footer .name small { margin-top: 12px; }
+@media (max-width: 900px) { .mark .logo { height: 38px; } .site-header.scrolled .mark .logo { height: 34px; } .mark { gap: 12px; } .mark .wm { padding-left: 12px; } .mark .wm-pi { font-size: 10.5px; } .mark .wm-pi b { font-size: 14px; } }
+@media (max-width: 420px) { .mark .wm { display: none; } }
+.btn-row .btn { margin: 0 10px 10px 0; }
+
+/* ---------- In-house forms (form.html) ---------- */
+.form-page { padding: 48px 0 96px; background: var(--sky-grad); }
+.form-wrap { max-width: 820px; }
+.pf { background: #fff; border-radius: 0 40px 0 40px; padding: 40px 44px; box-shadow: 0 1px 0 rgba(0, 0, 0, .06); }
+@media (max-width: 720px) { .pf { padding: 26px 20px; border-radius: 0 24px 0 24px; } .form-page { padding: 24px 0 64px; } }
+.pf h1 { font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1.1; margin: 12px 0 16px; }
+.pf-head p { color: var(--ink-2); }
+.pf-deadline { font-weight: 700; }
+.pf-required-note, .pf-help { font-size: 15px; color: var(--muted); }
+.pf-req { color: #c0392b; margin-left: 3px; }
+.pf-q { border: 0; margin: 0; padding: 22px 0; border-top: 1px solid var(--rule); min-width: 0; }
+.pf-label { display: block; font-weight: 700; font-size: 17px; margin-bottom: 8px; padding: 0; }
+.pf-help { margin: -2px 0 10px; }
+.pf input[type=text], .pf input[type=email], .pf input[type=tel], .pf input[type=url], .pf input[type=date], .pf select, .pf textarea { width: 100%; font: inherit; font-size: 17px; padding: 12px 14px; border: 1px solid #b9c2c8; border-radius: 6px; background: #fff; }
+.pf textarea { resize: vertical; }
+.pf input:focus, .pf select:focus, .pf textarea:focus { outline: 2px solid var(--cyan); border-color: var(--cyan); }
+.pf [aria-invalid=true] { border-color: #c0392b !important; }
+.pf-options { display: grid; gap: 8px; }
+.pf-option { display: flex; align-items: center; gap: 10px; font-size: 17px; cursor: pointer; }
+.pf-option input[type=radio], .pf-option input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--cyan-deep); flex: none; }
+.pf-other input[type=text] { flex: 1; padding: 8px 10px !important; }
+.pf-error { color: #c0392b; font-size: 15px; font-weight: 600; margin: 8px 0 0; }
+.pf-section { padding: 30px 0 4px; border-top: 2px solid #000; }
+.pf-section h2 { font-size: 1.6rem; }
+.pf-hp { position: absolute; left: -9999px; }
+.pf-submit { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-top: 24px; border-top: 1px solid var(--rule); }
+.pf-submit .btn { background: #000; color: #fff; cursor: pointer; font: inherit; font-size: 17px; }
+.pf-submit .btn:disabled { opacity: .6; cursor: wait; }
+.pf-status { margin: 0; font-weight: 600; }
+.pf-closed { font-size: 18px; font-weight: 600; padding: 16px 18px; background: var(--sky-grad); border-radius: 6px; }
+.pf-done { text-align: center; }
+.pf-done-icon { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--lime); font: 900 32px/1 var(--sans); }

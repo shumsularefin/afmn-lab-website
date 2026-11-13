@@ -177,3 +177,64 @@ export function chooseImage(app, current = '', { manage = false } = {}) {
     { wide: true },
   );
 }
+
+// ------------------------------------------------------------------ document fields (PDF upload or a link)
+
+export const fileFieldHTML = (f, path, value = '') => `
+  <div class="ed-field ed-wide ed-file-field" data-file="${h(path)}">
+    <span class="ed-label">${h(f.label)}</span>
+    <p class="ed-file-current" data-current></p>
+    <span class="ed-input-row"><input type="text" inputmode="url" data-path="${h(path)}" value="${h(value || '')}" placeholder="https://… or upload a PDF" aria-label="${h(f.label)} link">
+      <button type="button" class="ed-btn ed-btn-small" data-upload-file>Upload PDF</button></span>
+    <input type="file" accept="application/pdf,.pdf" hidden>
+    ${f.hint ? `<small>${h(f.hint)}</small>` : ''}
+  </div>`;
+
+/** Opens an uploaded document (file:<id>) in a new tab. */
+export async function openDocument(app, ref) {
+  const url = URL.createObjectURL(await app.cloud.documentBlob(ref.slice(5)));
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/** Wires one document field. The text input holds a link or file:<id>; onSet stores the value. */
+export function wireFile(box, app, onSet) {
+  const input = $('input[data-path]', box);
+  const picker = $('input[type="file"]', box);
+  const current = $('[data-current]', box);
+  const show = async () => {
+    const v = input.value.trim();
+    if (!v) {
+      current.innerHTML = '<span class="ed-muted">No file. The download buttons are hidden.</span>';
+      return;
+    }
+    if (!v.startsWith('file:')) {
+      current.innerHTML = `Link: <a href="${h(v)}" target="_blank" rel="noopener">${h(v)}</a>`;
+      return;
+    }
+    current.innerHTML = '<span class="ed-muted">Uploaded PDF…</span>';
+    const info = await app.cloud.documentInfo(v.slice(5)).catch(() => null);
+    current.innerHTML = info
+      ? `Uploaded PDF: <strong>${h(info.name)}</strong> (${Math.round(info.size / 1024)} KB) <button type="button" class="ed-btn ed-btn-small ed-btn-quiet" data-open-file>Open</button>`
+      : '<span class="ed-error-text">The uploaded file was not found. Upload it again.</span>';
+  };
+  show();
+  input.addEventListener('change', show);
+  $('[data-upload-file]', box).addEventListener('click', () => picker.click());
+  picker.addEventListener('change', () =>
+    busy($('[data-upload-file]', box), 'Uploading…', async () => {
+      const file = picker.files[0];
+      picker.value = '';
+      if (!file) return;
+      const { reference, name } = await app.cloud.uploadDocument(file);
+      input.value = reference;
+      onSet(reference);
+      show();
+      toast(`${name} uploaded. Publish the section to put it on the website.`);
+    }),
+  );
+  box.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-open-file]');
+    if (btn) await busy(btn, 'Opening…', () => openDocument(app, input.value.trim()));
+  });
+}

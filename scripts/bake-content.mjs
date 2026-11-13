@@ -1,6 +1,7 @@
 // Bakes what was published from the Lab Dashboard into the site before it is deployed:
 //   public/js/published.js   content of every published section, and the site revision
 //   public/media/<id>.jpg    every uploaded image that the content uses
+//   public/files/<id>.pdf    every uploaded document (such as the CV) that the content uses
 // It reads Firestore through its public REST API (no keys). If Firestore cannot be read, it leaves
 // public/ untouched and exits successfully, so a deploy never fails because of it; visitors' browsers
 // then load the published content directly.
@@ -75,9 +76,24 @@ async function bake() {
     writeFileSync(join(root, 'public', file), Buffer.from(m[1], 'base64'));
     media[ref] = file;
   }
-  const js = `// Content published from the Lab Dashboard, baked in by scripts/bake-content.mjs on ${new Date().toISOString()}.\nconst PUBLISHED = ${JSON.stringify({ project, revision, content, media })};\n`;
+  // Uploaded documents (file:<id>, such as the CV) become files/<id>.pdf.
+  const files = {};
+  const docRefs = [...new Set(JSON.stringify(content).match(/file:[a-f0-9-]{36}/g) || [])];
+  if (docRefs.length) mkdirSync(join(root, 'public/files'), { recursive: true });
+  for (const ref of docRefs) {
+    const id = ref.slice(5);
+    const info = await get(`siteFiles/${id}`);
+    if (!info) continue;
+    const meta = decodeFields(info.fields);
+    const parts = [];
+    for (let i = 0; i < meta.chunks; i++) parts.push(decodeValue((await get(`siteFiles/${id}/chunks/${i}`)).fields.data));
+    const file = `files/${id}.pdf`;
+    writeFileSync(join(root, 'public', file), Buffer.from(parts.join(''), 'base64'));
+    files[ref] = file;
+  }
+  const js = `// Content published from the Lab Dashboard, baked in by scripts/bake-content.mjs on ${new Date().toISOString()}.\nconst PUBLISHED = ${JSON.stringify({ project, revision, content, media, files })};\n`;
   writeFileSync(join(root, 'public/js/published.js'), js);
-  console.log(`Baked revision ${revision}: ${Object.keys(content).length} sections, ${Object.keys(media).length} images.`);
+  console.log(`Baked revision ${revision}: ${Object.keys(content).length} sections, ${Object.keys(media).length} images, ${Object.keys(files).length} documents.`);
 }
 
 try {

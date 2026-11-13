@@ -11,3 +11,4 @@ public/update/
 labboard/node_modules/
 labboard/.env.local
 labboard/.env.*.local
+public/files/
