@@ -1,6 +1,7 @@
 {
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "emulators": {
     "firestore": { "host": "127.0.0.1", "port": 8080 },
@@ -21,7 +22,14 @@
       { "source": "/js/published.js", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] },
       { "source": "/js/admin/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] },
       { "source": "/admin.html", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] },
-      { "source": "/media/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] }
+      { "source": "/media/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] },
+      { "source": "/update/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }, { "key": "Service-Worker-Allowed", "value": "/update" }] },
+      { "source": "/update/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }, { "key": "X-Robots-Tag", "value": "noindex" }] },
+      { "source": "/update/assets/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+    ],
+    "rewrites": [
+      { "source": "/update", "destination": "/update/index.html" },
+      { "source": "/update/**", "destination": "/update/index.html" }
     ]
   }
 }

@@ -9,6 +9,10 @@ rules_version = '2';
 //   auditLogs/{id}         private  append-only activity log with server timestamps
 //   removals/{key}         private  ties each deletion to its log entry
 //
+// LabBoard (instrument board at /update, source in labboard/) shares this project. Its collections are
+// users, allowlist, instruments, sessions, bookings, templates, issues, maintenance; see the LabBoard section
+// at the end of this file. The two apps use different collections and never touch each other's documents.
+//
 // Only Google sign-in counts. Every write carries an auditId; the rules check that the log entry is
 // created in the same request, by the same person, with the same server time.
 service cloud.firestore {
@@ -129,6 +133,206 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() && editor != 'muhammadshamsularefin01@gmail.com'
         && removed('labEditors:' + editor, 'access.delete', editor);
     }
+
+    // ================================================================ LabBoard (instrument board, /update)
+    //
+    // Roles: admin  - manage instruments, users, maintenance, everything
+    //        member - start/finish their own sessions, book, templates, report issues
+    //        guest  - read-only (e.g. the lab monitor); may report issues
+    // A users/{uid} document is created by the app on first sign-in. Its role and `approved` flag are only
+    // accepted when they match the allowlist entry for that email (or the owner, or the optional domain
+    // below). Anyone else is stored as a pending guest until an admin approves them.
+
+    // Optional: Google accounts on this domain are approved as members automatically. Disabled ('^$' never
+    // matches) so that only people on the approved list get in. To enable, e.g.: '.*@gstu[.]edu[.]bd$'
+    function lbDomainRegex() { return '^$'; }
+
+    function lbUserPath(uid) { return /databases/$(database)/documents/users/$(uid); }
+    function lbInstPath(id) { return /databases/$(database)/documents/instruments/$(id); }
+    function lbAllowPath(mail) { return /databases/$(database)/documents/allowlist/$(mail); }
+
+    function lbHasProfile() { return signedInWithGoogle() && exists(lbUserPath(request.auth.uid)); }
+    function lbMe() { return get(lbUserPath(request.auth.uid)).data; }
+    function lbApproved() { return lbHasProfile() && lbMe().approved == true; }
+    function lbMember() { return lbApproved() && lbMe().role in ['member', 'admin']; }
+    function lbAdmin() { return lbApproved() && lbMe().role == 'admin'; }
+
+    // Restricted instruments need the instrument id in the user's trainedOn list (admins are exempt).
+    function lbTrainedFor(instrumentId) {
+      let inst = get(lbInstPath(instrumentId)).data;
+      return inst.get('restricted', false) == false
+          || lbMe().role == 'admin'
+          || instrumentId in lbMe().get('trainedOn', []);
+    }
+    function lbInService(instrumentId) {
+      return get(lbInstPath(instrumentId)).data.get('status', 'ok') != 'out_of_service';
+    }
+    function lbUnchanged(field) {
+      return request.resource.data.get(field, null) == resource.data.get(field, null);
+    }
+    function lbOnlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // The role/approval a person may give themselves.
+    function lbValidSelfAccess(d) {
+      let listed = exists(lbAllowPath(email()));
+      return (isOwner() && d.role == 'admin' && d.approved == true)
+          || (listed
+               && d.role == get(lbAllowPath(email())).data.role
+               && d.approved == true)
+          || (!listed
+               && email().matches(lbDomainRegex())
+               && d.role == 'member'
+               && d.approved == true)
+          || (d.role == 'guest' && d.approved == false);
+    }
+
+    match /users/{uid} {
+      allow read: if (signedInWithGoogle() && request.auth.uid == uid) || lbApproved();
+
+      allow create: if signedInWithGoogle()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == email()
+        && request.resource.data.trainedOn == []
+        && lbValidSelfAccess(request.resource.data);
+
+      allow update: if lbAdmin()
+        // own profile cosmetics
+        || (signedInWithGoogle() && request.auth.uid == uid
+            && lbOnlyChanges(['name', 'photoURL', 'lastLoginAt', 'notify']))
+        // self-upgrade when an admin has since added you to the allowlist
+        || (signedInWithGoogle() && request.auth.uid == uid
+            && lbOnlyChanges(['role', 'approved', 'name', 'photoURL', 'lastLoginAt'])
+            && lbValidSelfAccess(request.resource.data)
+            && request.resource.data.approved == true);
+
+      allow delete: if lbAdmin();
+    }
+
+    // allowlist: doc id = lower-case email
+    match /allowlist/{mail} {
+      allow read: if lbAdmin() || (signedInWithGoogle() && email() == mail);
+      allow write: if lbAdmin()
+        && (request.resource == null || request.resource.data.role in ['admin', 'member', 'guest']);
+    }
+
+    match /instruments/{id} {
+      allow read: if lbApproved();
+      allow create, delete: if lbAdmin();
+
+      allow update: if lbAdmin()
+        // A member claims a free instrument for a session they create in the same batch/transaction.
+        || (lbMember()
+            && lbOnlyChanges(['activeSession', 'freeSince'])
+            && resource.data.get('activeSession', null) == null
+            && resource.data.get('status', 'ok') != 'out_of_service'
+            && request.resource.data.activeSession.uid == request.auth.uid
+            && getAfter(/databases/$(database)/documents/sessions/$(request.resource.data.activeSession.sessionId)).data.userId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/sessions/$(request.resource.data.activeSession.sessionId)).data.instrumentId == id)
+        // The session owner releases the instrument when finishing.
+        || (lbMember()
+            && lbOnlyChanges(['activeSession', 'freeSince'])
+            && resource.data.get('activeSession', null) != null
+            && resource.data.activeSession.uid == request.auth.uid
+            && request.resource.data.activeSession == null);
+    }
+
+    match /sessions/{id} {
+      allow read: if lbApproved();
+
+      allow create: if lbMember()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.expectedEnd is timestamp
+        && request.resource.data.expectedEnd > request.time
+        && request.resource.data.sample is string
+        && request.resource.data.sample.size() <= 200
+        && request.resource.data.params is list
+        && request.resource.data.params.size() <= 40
+        && lbTrainedFor(request.resource.data.instrumentId)
+        && lbInService(request.resource.data.instrumentId);
+
+      // Only the session owner edits their session (admins may force-finish).
+      allow update: if (lbMember()
+            && resource.data.userId == request.auth.uid
+            && lbUnchanged('userId') && lbUnchanged('instrumentId') && lbUnchanged('startedAt')
+            && request.resource.data.status in ['active', 'finished'])
+        || lbAdmin();
+
+      allow delete: if lbAdmin();
+    }
+
+    function lbValidBookingTimes(d) {
+      let maxH = get(lbInstPath(d.instrumentId)).data.get('maxBookingHours', 12);
+      return d.start is timestamp && d.end is timestamp
+          && d.end > d.start
+          && d.end <= d.start + duration.value(maxH, 'h');
+    }
+
+    match /bookings/{id} {
+      allow read: if lbApproved();
+
+      allow create: if lbMember()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'booked'
+        && request.resource.data.end > request.time
+        && lbValidBookingTimes(request.resource.data)
+        && lbTrainedFor(request.resource.data.instrumentId)
+        && lbInService(request.resource.data.instrumentId);
+
+      allow update: if
+        // Owner cancels or marks the booking as started
+        (lbMember()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.status in ['started', 'cancelled']
+          && lbOnlyChanges(['status', 'sessionId', 'startedAt', 'cancelledAt']))
+        // Owner moves / resizes their booking
+        || (lbMember()
+          && resource.data.userId == request.auth.uid
+          && resource.data.status == 'booked'
+          && request.resource.data.status == 'booked'
+          && lbOnlyChanges(['start', 'end', 'purpose'])
+          && request.resource.data.end > request.time
+          && lbValidBookingTimes(request.resource.data))
+        // Any approved user may auto-release a no-show 30 minutes after its start
+        || (lbApproved()
+          && resource.data.status == 'booked'
+          && request.time > resource.data.start + duration.value(30, 'm')
+          && request.resource.data.status == 'released'
+          && lbOnlyChanges(['status', 'releasedAt']))
+        || lbAdmin();
+
+      allow delete: if lbAdmin() || (lbMember() && resource.data.userId == request.auth.uid);
+    }
+
+    // Saved parameter sets per instrument
+    match /templates/{id} {
+      allow read: if lbApproved();
+      allow create: if lbMember()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.params is list
+        && request.resource.data.params.size() <= 40;
+      allow update, delete: if lbAdmin()
+        || (lbMember() && resource.data.createdBy == request.auth.uid && lbUnchanged('createdBy'));
+    }
+
+    match /issues/{id} {
+      allow read: if lbApproved();
+      allow create: if lbApproved()
+        && request.resource.data.reportedBy == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 2000;
+      allow update, delete: if lbAdmin();
+    }
+
+    match /maintenance/{id} {
+      allow read: if lbApproved();
+      allow write: if lbAdmin();
+    }
+
 
     match /{document=**} {
       allow read, write: if false;
