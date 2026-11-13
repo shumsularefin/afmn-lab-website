@@ -543,3 +543,5 @@ a.ed-stat:hover { border-color: var(--ed-aqua); }
 .ed-table-wrap { overflow-x: auto; max-width: 100%; }
 html, body.ed-body { overflow-x: hidden; }
 .ed-toasts { max-width: calc(100vw - 32px); }
+.ed-signin-card .ed-logo { display: block; width: 220px; height: auto; margin: 0 auto 18px; }
+.ed-doc { display: flex !important; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--ed-line); flex-wrap: wrap; }

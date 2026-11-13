@@ -5,6 +5,8 @@ rules_version = '2';
 //   site/meta              public   revision counter; public pages compare it with their baked copy
 //   content/{section}      public   one document per editable section: { data, revision, updatedAt, updatedBy, updatedByEmail, auditId }
 //   siteImages/{id}        public   uploaded, optimized JPEG images (media:<id>)
+//   siteFiles/{id}         public   uploaded PDFs such as the CV (file:<id>), in chunks/{n}
+//   forms/{id}             public   in-house forms (recruitment applications…); responses/{r} private
 //   labEditors/{email}     private  dashboard access granted by a super-admin
 //   auditLogs/{id}         private  append-only activity log with server timestamps
 //   removals/{key}         private  ties each deletion to its log entry
@@ -64,7 +66,8 @@ service cloud.firestore {
         && request.resource.data.actorUid == request.auth.uid
         && request.resource.data.actorEmail == email()
         && request.resource.data.createdAt == request.time
-        && request.resource.data.action in ['content.update', 'image.add', 'image.delete', 'access.set', 'access.delete']
+        && request.resource.data.action in ['content.update', 'image.add', 'image.delete', 'file.add', 'file.delete',
+             'access.set', 'access.delete', 'form.create', 'form.update', 'form.delete', 'form.responses.delete']
         && request.resource.data.target is string && request.resource.data.target.size() <= 200
         && request.resource.data.detail is string && request.resource.data.detail.size() <= 1000;
       allow update, delete: if false;
@@ -116,6 +119,79 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isEditor() && (isSuperAdmin() || resource.data.createdBy == request.auth.uid)
         && removed('siteImages:' + id, 'image.delete', id);
+    }
+
+    // Documents such as the PI's CV (PDF): metadata here, the file as base64 in chunks/{0..7}.
+    function filePath(id) { return /databases/$(database)/documents/siteFiles/$(id); }
+    match /siteFiles/{id} {
+      allow get: if true;
+      allow list: if isEditor();
+      allow create: if isEditor() && id.matches('^[a-f0-9-]{36}$')
+        && request.resource.data.keys().hasOnly(['name', 'type', 'size', 'chunks', 'createdBy', 'createdByEmail', 'createdAt', 'auditId'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 150
+        && request.resource.data.type == 'application/pdf'
+        && request.resource.data.size is int && request.resource.data.size <= 5242880
+        && request.resource.data.chunks is int && request.resource.data.chunks >= 1 && request.resource.data.chunks <= 8
+        && request.resource.data.createdBy == request.auth.uid && request.resource.data.createdByEmail == email()
+        && request.resource.data.createdAt == request.time
+        && audited(request.resource.data.auditId, 'file.add', id);
+      allow update: if false;
+      allow delete: if isEditor() && (isSuperAdmin() || resource.data.createdBy == request.auth.uid)
+        && removed('siteFiles:' + id, 'file.delete', id);
+
+      match /chunks/{n} {
+        allow get, list: if true;
+        // Written only together with a new file document, by the same person in the same request.
+        allow create: if isEditor() && n.matches('^[0-7]$')
+          && getAfter(filePath(id)).data.createdBy == request.auth.uid
+          && getAfter(filePath(id)).data.createdAt == request.time
+          && int(n) < getAfter(filePath(id)).data.chunks
+          && request.resource.data.keys().hasOnly(['data'])
+          && request.resource.data.data is string && request.resource.data.data.size() <= 900000;
+        allow update: if false;
+        allow delete: if isEditor() && removed('siteFiles:' + id, 'file.delete', id);
+      }
+    }
+
+    // ---------------------------------------------------------------- in-house forms
+
+    function formFields(d, id) {
+      return d.keys().hasOnly(['id', 'title', 'description', 'status', 'closesAt', 'fields', 'confirmation',
+             'createdBy', 'revision', 'updatedAt', 'updatedBy', 'auditId'])
+        && d.id == id && id.matches('^[a-z0-9]+(-[a-z0-9]+)*$') && id.size() <= 80
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 200
+        && d.description is string && d.description.size() <= 3000
+        && d.confirmation is string && d.confirmation.size() <= 1000
+        && d.status in ['draft', 'open', 'closed']
+        && (d.closesAt == null || d.closesAt is timestamp)
+        && d.fields is list && d.fields.size() > 0 && d.fields.size() <= 60
+        && d.createdBy is string
+        && d.updatedAt == request.time && d.updatedBy == request.auth.uid;
+    }
+
+    match /forms/{formId} {
+      allow get, list: if true;
+      allow create: if role() in ['super-admin', 'editor'] && formFields(request.resource.data, formId)
+        && request.resource.data.revision == 1 && request.resource.data.createdBy == request.auth.uid
+        && audited(request.resource.data.auditId, 'form.create', formId);
+      allow update: if role() in ['super-admin', 'editor'] && formFields(request.resource.data, formId)
+        && request.resource.data.createdBy == resource.data.createdBy && nextRevision()
+        && audited(request.resource.data.auditId, 'form.update', formId);
+      allow delete: if isSuperAdmin() && removed('forms:' + formId, 'form.delete', formId);
+
+      function parentForm() { return get(/databases/$(database)/documents/forms/$(formId)).data; }
+      function accepting(f) { return f.status == 'open' && (f.closesAt == null || request.time < f.closesAt); }
+
+      // Applications hold personal details: only lab editors and super-admins read them.
+      match /responses/{responseId} {
+        allow get, list: if role() in ['super-admin', 'editor'];
+        allow create: if accepting(parentForm()) && responseId.matches('^r_[a-f0-9]{24}$')
+          && request.resource.data.keys().hasOnly(['answers', 'submittedAt'])
+          && request.resource.data.submittedAt == request.time
+          && request.resource.data.answers is map && request.resource.data.answers.size() <= 62;
+        allow update: if false;
+        allow delete: if isSuperAdmin() && removed('formResponses:' + formId, 'form.responses.delete', formId);
+      }
     }
 
     // ---------------------------------------------------------------- access

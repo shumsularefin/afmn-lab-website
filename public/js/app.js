@@ -73,6 +73,29 @@ function loadMedia() {
   }
 }
 
+// Uploaded documents (file:<id>, e.g. the CV) are baked to files/<id>.pdf at deploy; newer ones are
+// assembled from their Firestore chunks when the link is clicked.
+const cvRef = () => C.pi.cv ?? C.site.cvUrl ?? '';
+function docHref(ref) {
+  if (!ref) return '';
+  if (!ref.startsWith('file:')) return ref;
+  return PUBLISHED.files?.[ref] || `#${ref}`;
+}
+async function openLiveDocument(ref) {
+  const win = window.open('', '_blank');
+  try {
+    const info = decodeFields((await fsGet(`siteFiles/${ref.slice(5)}`)).fields);
+    const parts = await Promise.all([...Array(info.chunks).keys()].map((i) => fsGet(`siteFiles/${ref.slice(5)}/chunks/${i}`).then((d) => decodeValue(d.fields.data))));
+    const bin = atob(parts.join('')), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    if (win) win.location = url; else location.href = url;
+  } catch {
+    win?.close();
+    alert('The document could not be loaded. Please try again later.');
+  }
+}
+
 // ---------- Small helpers ----------
 const mailto = (e) => `<a href="mailto:${esc(e)}">${esc(e)}</a>`;
 const tel = (n) => `<a href="tel:${esc(n.replace(/[^+\d]/g, ''))}">${esc(n)}</a>`;
@@ -102,15 +125,10 @@ const thumb = (a) => {
 };
 
 // ---------- Header & footer ----------
-// Lab mark: a hexagonal lattice with bonded nodes (nanosheet / molecule motif).
-const LOGO = (light = false) => `<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg${light ? 'l' : 'd'}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${light ? '#80dcf3' : '#009ede'}"/><stop offset="1" stop-color="${light ? '#b8eaef' : '#0764a2'}"/></linearGradient></defs>
-  <g fill="none" stroke="url(#lg${light ? 'l' : 'd'})" stroke-width="2.6" stroke-linejoin="round"><path d="M32 4 56 18v28L32 60 8 46V18z"/><path d="M32 4v56M8 18l48 28M56 18 8 46"/></g>
-  <g fill="url(#lg${light ? 'l' : 'd'})"><circle cx="32" cy="4" r="4"/><circle cx="56" cy="18" r="4"/><circle cx="56" cy="46" r="4"/><circle cx="32" cy="60" r="4"/><circle cx="8" cy="46" r="4"/><circle cx="8" cy="18" r="4"/><circle cx="32" cy="32" r="7"/></g>
-  <circle cx="32" cy="32" r="3" fill="#e6e400"/></svg>`;
 
 function renderChrome() {
   const S = C.site;
-  const mark = `<a class="mark" href="index.html" aria-label="${esc(S.name)}, Principal Investigator ${esc(S.piName)}, home">${LOGO()}<span class="wm"><span class="wm-name">${esc(S.name)}</span><span class="wm-pi">Principal Investigator: ${esc(S.piName)}</span></span></a>`;
+  const mark = `<a class="mark" href="index.html" aria-label="${esc(S.name)}, Principal Investigator ${esc(S.piName)}, home"><img class="logo" src="images/brand/afmn-logo.svg" alt="" width="196" height="53"><span class="wm"><span class="wm-pi">Principal Investigator<b>${esc(S.piName)}</b></span></span></a>`;
   const NAV = nav(), half = Math.ceil(NAV.length / 2);
   const navLinks = NAV.map(([h, t]) => `<a href="${h}"${h === page ? ' aria-current="page"' : ''}>${t}</a>`).join('');
   const parts = {
@@ -134,7 +152,7 @@ function renderChrome() {
     band: `<section class="band" id="site-band"><div class="wrap"><a class="btn" href="contact.html">${esc(S.contactButton || 'Get in touch with the lab')}</a></div></section>`,
     footer: `<footer class="site-footer" id="site-footer"><div class="wrap">
   <div class="top">
-    <div><div class="name">${LOGO(true)}<span>${esc(S.name)}<small>${esc(S.fullName)}</small></span></div>
+    <div><div class="name"><img class="logo" src="images/brand/afmn-logo-light.svg" alt="${esc(S.name)}" width="222" height="60"><small>${esc(S.fullName)}</small></div>
       <p>Principal Investigator: <a href="profile.html"><b>${esc(S.piName)}</b></a><br>${esc(S.piTitle)}<br><br>${lines(S.address).map(esc).join('<br>')}</p></div>
     <div><h4>Site</h4><ul>${NAV.slice(0, half).map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul></div>
     <div><h4>&nbsp;</h4><ul>${NAV.slice(half).map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul></div>
@@ -236,11 +254,12 @@ const piPhoto = (attrs) => {
 const personCard = (m) => {
   const links = (m.links || []).filter((l) => l.url).map(extLink);
   if (m.email) links.unshift(`<a href="mailto:${esc(m.email)}">Email</a>`);
+  if (m.website) links.unshift(`<a href="${esc(m.website)}" target="_blank" rel="noopener">Website</a>`);
   return `<div class="person"><div class="ph">${m.photo ? img(m.photo, `alt="${esc(m.name)}" loading="lazy"`) : esc(initials(m.name))}</div>
-    <b>${esc(m.name)}</b><span>${esc(m.position || '')}</span>${hasText(m.topic) ? `<span>${inline(m.topic)}</span>` : ''}${hasText(m.period) ? `<span>${esc(m.period)}</span>` : ''}${hasText(m.now) ? `<span>Now: ${inline(m.now)}</span>` : ''}${links.length ? `<div class="lk">${links.join(' · ')}</div>` : ''}</div>`;
+    <b>${m.website ? `<a href="${esc(m.website)}" target="_blank" rel="noopener">${esc(m.name)}</a>` : esc(m.name)}</b><span>${esc(m.position || '')}</span>${hasText(m.topic) ? `<span>${inline(m.topic)}</span>` : ''}${hasText(m.period) ? `<span>${esc(m.period)}</span>` : ''}${hasText(m.now) ? `<span>Now: ${inline(m.now)}</span>` : ''}${links.length ? `<div class="lk">${links.join(' · ')}</div>` : ''}</div>`;
 };
 const positionCard = (p) => {
-  const apply = hasText(p.apply) ? (p.apply.includes('@') && !/^https?:/.test(p.apply) ? `mailto:${p.apply}` : p.apply) : `mailto:${C.site.email}`;
+  const apply = p.form ? `form/${encodeURIComponent(p.form)}` : hasText(p.apply) ? (p.apply.includes('@') && !/^https?:/.test(p.apply) ? `mailto:${p.apply}` : p.apply) : `mailto:${C.site.email}`;
   return `<article class="opening"><div class="opening-meta"><span class="tag">${esc(p.kind || 'Position')}</span>${p.deadline ? `<span>Apply by ${dateLabel(p.deadline)}</span>` : '<span>Open until filled</span>'}</div>
     <h3>${inline(p.title)}</h3>${paras(p.summary)}${hasText(p.requirements) ? `<h4>Requirements</h4>${plainList(p.requirements)}` : ''}
     <p><a class="btn" href="${esc(apply)}"${/^https?:/.test(apply) ? ' target="_blank" rel="noopener"' : ''}>Apply</a></p></article>`;
@@ -274,7 +293,7 @@ const RENDER = {
     <figcaption><span>${esc(P.photoCaption)}</span><span>${esc(P.photoCaption2)}</span></figcaption></figure>
   <div><div class="label">Principal Investigator</div><h2>${esc(P.name)}</h2>${positions(P.positions || [])}
     <p class="pi-bio">${inline(P.shortBio)}</p>
-    <div class="links"><a href="profile.html">Full profile</a>${C.home.showChapters && (P.chapters || []).length ? '<a href="#student-chapters">Student chapters</a>' : ''}${C.site.cvUrl ? `<a href="${esc(C.site.cvUrl)}">Curriculum vitae (PDF)</a>` : ''}${P.email ? mailto(P.email) : ''}</div></div>`;
+    <div class="links"><a href="profile.html">Full profile</a>${C.home.showChapters && (P.chapters || []).length ? '<a href="#student-chapters">Student chapters</a>' : ''}${cvRef() ? `<a href="${esc(docHref(cvRef()))}" target="_blank" rel="noopener">Curriculum vitae (PDF)</a>` : ''}${P.website ? `<a href="${esc(P.website)}" target="_blank" rel="noopener">Personal website</a>` : ''}${P.email ? mailto(P.email) : ''}</div></div>`;
   },
   'home-chapters'(el) {
     const P = C.pi;
@@ -294,7 +313,7 @@ const RENDER = {
       .map((n) => `<li><time>${esc(n.date)}</time>${inline(n.text)}${n.link ? ` <a class="arrow" href="${esc(n.link)}">More</a>` : ''}</li>`).join('') || '<li>No news yet.</li>';
   },
   'roster'(el) {
-    el.innerHTML = (C.team.members || []).filter((m) => m.group === 'current').map((m) => `<div><b>${esc(m.name)}</b><span>${inline(m.topic || m.position)}</span></div>`).join('');
+    el.innerHTML = (C.team.members || []).filter((m) => m.group === 'current').map((m) => `<div><b>${m.website ? `<a href="${esc(m.website)}" target="_blank" rel="noopener">${esc(m.name)}</a>` : esc(m.name)}</b><span>${inline(m.topic || m.position)}</span></div>`).join('');
   },
   'research-page'(el) {
     const R = C.research;
@@ -315,7 +334,7 @@ const RENDER = {
   'profile-page'(el) {
     const P = C.pi;
     const out = [`<h2 id="biography" style="margin-top:0;border-top:0;padding-top:0">Biography</h2><p class="lede">${inline(P.lede)}</p>${paras(P.biography)}`];
-    if (C.site.cvUrl) out.push(`<p><a class="btn" href="${esc(C.site.cvUrl)}">Download curriculum vitae (PDF)</a></p>`);
+    if (cvRef() || P.website) out.push(`<p class="btn-row">${cvRef() ? `<a class="btn" href="${esc(docHref(cvRef()))}" target="_blank" rel="noopener">Download curriculum vitae (PDF)</a>` : ''}${P.website ? ` <a class="btn" href="${esc(P.website)}" target="_blank" rel="noopener">Personal website</a>` : ''}</p>`);
     if ((P.appointments || []).length) out.push(`<h2 id="appointments">Appointments</h2>${rows(P.appointments)}`);
     if ((P.education || []).length) out.push(`<h2 id="education">Education</h2>${rows(P.education)}`);
     if (lines(P.interests).length) out.push(`<h2 id="interests">Research interests</h2>${plainList(P.interests)}`);
@@ -334,7 +353,7 @@ const RENDER = {
     el.innerHTML = `<h2 id="pi" style="margin-top:0">Principal Investigator</h2>
       <div class="pi-card">${C.pi.photo === 'images/portrait.jpg' ? `<img src="images/portrait-400.jpg" alt="${esc(P.name)}" width="400" height="399" loading="lazy" decoding="async">` : img(P.photo, `alt="${esc(P.name)}" loading="lazy"`)}
         <div><h3>${esc(P.name)}</h3><p class="pi-role"><b>${esc(C.site.piTitle.split(',')[0])}</b> · ${esc(C.site.department)}, ${esc(C.site.orgShort.split('·').pop().trim())}</p>${hasText(P.cardNote) ? `<p class="muted">${inline(P.cardNote)}</p>` : ''}
-        <p>${inline(P.cardBio || P.shortBio)}</p><p><a class="arrow" href="profile.html">Full profile</a> &nbsp; ${P.email ? mailto(P.email) : ''}</p></div></div>
+        <p>${inline(P.cardBio || P.shortBio)}</p><p><a class="arrow" href="profile.html">Full profile</a> &nbsp; ${P.website ? `<a href="${esc(P.website)}" target="_blank" rel="noopener">Personal website</a> &nbsp; ` : ''}${P.email ? mailto(P.email) : ''}</p></div></div>
       ${by('current').length ? `<h2 id="members">Research members</h2><div class="people">${by('current').map(personCard).join('')}</div>` : ''}
       ${by('collab').length ? `<h2 id="collaborators">Collaborators</h2><div class="people">${by('collab').map(personCard).join('')}</div>` : ''}
       ${by('alumni').length ? `<h2 id="alumni">Alumni</h2><div class="people">${by('alumni').map(personCard).join('')}</div>` : ''}
@@ -360,7 +379,7 @@ const RENDER = {
     const O = C.openings, open = openPositions();
     el.innerHTML = `<h2 id="overview" style="margin-top:0;border-top:0;padding-top:0" data-nav="Overview">Working with us</h2>${paras(O.intro)}
       <h2 id="positions">Open positions</h2>${open.length ? `<div class="openings">${open.map(positionCard).join('')}</div>` : '<p class="muted">There are no specific openings at the moment. Motivated students are always welcome to get in touch.</p>'}
-      <h2 id="apply">How to apply</h2>${paras(O.howToApply)}${C.site.email ? `<p><a class="btn" href="mailto:${esc(C.site.email)}">Email ${esc(C.site.piName)}</a></p>` : ''}`;
+      <h2 id="apply">How to apply</h2>${paras(O.howToApply)}<p class="btn-row">${O.applyForm || O.applyLink ? `<a class="btn" href="${esc(O.applyForm ? `form/${encodeURIComponent(O.applyForm)}` : O.applyLink)}"${O.applyForm ? '' : ' target="_blank" rel="noopener"'}>${esc(O.applyLabel || 'Apply online')}</a> ` : ''}${C.site.email ? `<a class="btn" href="mailto:${esc(C.site.email)}">Email ${esc(C.site.piName)}</a>` : ''}</p>`;
   },
   'gallery-page'(el) {
     const photos = (C.gallery.photos || []).filter((p) => p.image);
@@ -439,6 +458,8 @@ document.addEventListener('click', (e) => {
   else if (e.target.closest('.menu-close')) setMenu(false);
   const cite = e.target.closest('[data-cite]');
   if (cite) { const p = pubs()[+cite.dataset.i]; if (p) copy(cite.dataset.cite === 'bib' ? bibtex(p) : apa(p), cite); }
+  const docLink = e.target.closest('a[href^="#file:"]');
+  if (docLink) { e.preventDefault(); openLiveDocument(docLink.getAttribute('href').slice(1)); }
   const notice = e.target.closest('[data-notice]');
   if (notice) {
     let d = []; try { d = JSON.parse(sessionStorage.getItem('afmn-notices') || '[]'); } catch { /* ignore */ }

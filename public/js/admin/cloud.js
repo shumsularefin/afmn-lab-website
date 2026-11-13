@@ -33,11 +33,11 @@ export const ROLES = ['super-admin', 'editor', 'contributor'];
 export const roleInfo = {
   'super-admin': {
     label: 'Super-admin',
-    summary: 'Everything: all website content, editor access, the activity log and backups.',
+    summary: 'Everything: all website content, forms and responses, editor access, the activity log and backups.',
   },
   editor: {
     label: 'Lab editor',
-    summary: 'All website content: home page, notices, PI profile, research, instruments, group members, publications, news, openings, gallery, teaching and contact details.',
+    summary: 'All website content: home page, notices, PI profile, research, instruments, group members, publications, news, openings, gallery, teaching and contact details, plus forms and their responses.',
   },
   contributor: {
     label: 'Contributor',
@@ -57,6 +57,8 @@ export function permissions(role) {
     editors: superAdmin,
     activity: superAdmin,
     backups: superAdmin,
+    forms: editor,
+    deleteForms: superAdmin,
   };
 }
 
@@ -74,6 +76,10 @@ export function editorEmail(value) {
   if (!/^[^\s/@]+@[^\s/@]+\.[^\s/@]+$/.test(email) || email.length > 200) throw Error('Enter a valid Google account email.');
   return email;
 }
+
+// Documents (PDF) are split into base64 chunks below Firestore's 1 MiB document limit.
+const FILE_MAX = 5 * 1024 * 1024;
+const CHUNK = 900000;
 
 // Firestore rejects undefined; drafts may contain it after edits.
 const clean = (value) => JSON.parse(JSON.stringify(value ?? null));
@@ -148,7 +154,11 @@ function createCloud({ db, auth }) {
 
     /** Every published section with its revision (for conflict checks), and the site revision. */
     async load() {
-      const [meta, docs] = await Promise.all([getDocFromServer(metaRef), getDocsFromServer(collection(db, 'content'))]);
+      const [meta, docs, forms] = await Promise.all([
+        getDocFromServer(metaRef),
+        getDocsFromServer(collection(db, 'content')),
+        getDocsFromServer(collection(db, 'forms')).catch(() => null), // rules older than the forms
+      ]);
       const sections = {};
       for (const d of docs.docs)
         sections[d.id] = {
@@ -161,7 +171,56 @@ function createCloud({ db, auth }) {
         revision: meta.exists() ? meta.data().revision || 0 : 0,
         meta: meta.exists() ? { ...meta.data(), updatedAt: meta.data().updatedAt?.toDate?.() || null } : null,
         sections,
+        forms: (forms?.docs || []).map((d) => ({
+          value: { ...d.data(), closesAt: d.data().closesAt?.toDate?.() || null, updatedAt: undefined },
+          revision: d.data().revision || 0,
+          updatedAt: d.data().updatedAt?.toDate?.() || null,
+          createdBy: d.data().createdBy,
+        })),
       };
+    },
+
+    // ---------------------------------------------------------------- in-house forms
+
+    /** Saves a normalized form. Throws ConflictError when it changed since baseRevision (0 = new). */
+    saveForm(form, baseRevision) {
+      const ref = doc(db, 'forms', form.id);
+      return runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        const current = snap.exists() ? snap.data().revision || 0 : 0;
+        if (current !== baseRevision) throw new ConflictError(form.title, current);
+        const auditId = audit(tx, current ? 'form.update' : 'form.create', form.id, form.title);
+        tx.set(ref, {
+          ...clean({ ...form, closesAt: null }),
+          closesAt: form.closesAt || null,
+          createdBy: snap.exists() ? snap.data().createdBy : uid(),
+          revision: current + 1,
+          updatedAt: serverTimestamp(),
+          updatedBy: uid(),
+          auditId,
+        });
+        return current + 1;
+      });
+    },
+    deleteForm(id) {
+      return runTransaction(db, async (tx) => {
+        const auditId = audit(tx, 'form.delete', id);
+        tx.set(doc(db, 'removals', `forms:${id}`), { auditId });
+        tx.delete(doc(db, 'forms', id));
+      });
+    },
+    async responses(id) {
+      const snap = await getDocsFromServer(collection(db, 'forms', id, 'responses'));
+      return snap.docs.map((d) => ({ id: d.id, answers: d.data().answers || {}, submittedAt: d.data().submittedAt?.toDate?.() || null }));
+    },
+    async deleteResponses(id, ids) {
+      for (let i = 0; i < ids.length; i += 400) {
+        const batch = writeBatch(db);
+        const auditId = audit(batch, 'form.responses.delete', id, `${ids.slice(i, i + 400).length} responses`);
+        batch.set(doc(db, 'removals', `formResponses:${id}`), { auditId });
+        for (const r of ids.slice(i, i + 400)) batch.delete(doc(db, 'forms', id, 'responses', r));
+        await batch.commit();
+      }
     },
 
     /** Publishes one section. Throws ConflictError when someone else published it after baseRevision. */
@@ -224,6 +283,65 @@ function createCloud({ db, auth }) {
         const auditId = audit(tx, 'image.delete', id, name);
         tx.set(doc(db, 'removals', `siteImages:${id}`), { auditId });
         tx.delete(doc(db, 'siteImages', id));
+      });
+    },
+
+    // ---------------------------------------------------------------- documents such as the CV (PDF), stored in chunks
+
+    async uploadDocument(file) {
+      if (!file) throw Error('Choose a file.');
+      if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) throw Error('Choose a PDF file.');
+      if (file.size > FILE_MAX) throw Error('Choose a PDF smaller than 5 MB. Most PDF readers can “Reduce file size”.');
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const base64 = btoa(binary);
+      const chunks = [];
+      for (let i = 0; i < base64.length; i += CHUNK) chunks.push(base64.slice(i, i + CHUNK));
+      const id = crypto.randomUUID();
+      const name = String(file.name || 'document.pdf').replace(/[^\w.\- ()]+/g, '_').slice(0, 120);
+      const batch = writeBatch(db);
+      const auditId = audit(batch, 'file.add', id, name);
+      batch.set(doc(db, 'siteFiles', id), {
+        name,
+        type: 'application/pdf',
+        size: file.size,
+        chunks: chunks.length,
+        createdBy: uid(),
+        createdByEmail: auth.currentUser.email.toLowerCase(),
+        createdAt: serverTimestamp(),
+        auditId,
+      });
+      chunks.forEach((data, i) => batch.set(doc(db, 'siteFiles', id, 'chunks', String(i)), { data }));
+      await batch.commit();
+      return { reference: `file:${id}`, name };
+    },
+    async documents() {
+      const snap = await getDocsFromServer(collection(db, 'siteFiles'));
+      return snap.docs.map((d) => ({ id: d.id, reference: `file:${d.id}`, ...d.data(), createdAt: d.data().createdAt?.toDate?.() || null }));
+    },
+    async documentInfo(id) {
+      const snap = await getDocFromServer(doc(db, 'siteFiles', id));
+      return snap.exists() ? { id, ...snap.data() } : null;
+    },
+    /** The file as a Blob (for "Open"). */
+    async documentBlob(id) {
+      const info = await this.documentInfo(id);
+      if (!info) throw Error('This file no longer exists.');
+      const parts = await Promise.all([...Array(info.chunks).keys()].map((i) => getDocFromServer(doc(db, 'siteFiles', id, 'chunks', String(i)))));
+      const binary = atob(parts.map((p) => p.data().data).join(''));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: info.type || 'application/pdf' });
+    },
+    async deleteDocument(id, name = '') {
+      const info = await this.documentInfo(id);
+      if (!info) return;
+      return runTransaction(db, async (tx) => {
+        const auditId = audit(tx, 'file.delete', id, name);
+        tx.set(doc(db, 'removals', `siteFiles:${id}`), { auditId });
+        for (let i = 0; i < info.chunks; i++) tx.delete(doc(db, 'siteFiles', id, 'chunks', String(i)));
+        tx.delete(doc(db, 'siteFiles', id));
       });
     },
 

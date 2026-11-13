@@ -2,7 +2,7 @@
 // Lists open one item at a time (their fields are built when opened, so a list of 100 publications
 // stays fast), can be searched, reordered with ↑ ↓, duplicated and removed.
 import { h, $, $$, confirmDialog, slug, busy, toast } from './ui.js';
-import { imageFieldHTML, wireImage } from './images.js';
+import { imageFieldHTML, wireImage, fileFieldHTML, wireFile } from './images.js';
 
 const get = (obj, path) => path.split('.').filter(Boolean).reduce((o, k) => (o == null ? undefined : o[k]), obj);
 function set(obj, path, value) {
@@ -22,10 +22,12 @@ function fieldAt(fields, path) {
   }
   return field;
 }
+/** Select options may be a list or a function (for choices that come from the database, such as forms). */
+const optionsOf = (f) => (typeof f.options === 'function' ? f.options() : f.options);
 export function defaultItem(fields) {
   const item = {};
   for (const f of fields)
-    item[f.key] = f.default ?? (f.type === 'list' ? [] : f.type === 'checkbox' ? false : f.type === 'number' ? (f.key === 'year' ? new Date().getFullYear() : 0) : f.type === 'select' ? f.options[0][0] : '');
+    item[f.key] = f.default ?? (f.type === 'list' ? [] : f.type === 'checkbox' ? false : f.type === 'number' ? (f.key === 'year' ? new Date().getFullYear() : 0) : f.type === 'select' ? optionsOf(f)[0]?.[0] ?? '' : '');
   return item;
 }
 
@@ -52,7 +54,7 @@ export function validate(fields, value, base = '') {
     if (f.type === 'number' && (!Number.isFinite(Number(v)) || (f.min !== undefined && v < f.min) || (f.max !== undefined && v > f.max)))
       return { path, message: `${label} must be a number between ${f.min ?? 0} and ${f.max}.` };
     if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return { path, message: `${label} is not a valid email address.` };
-    if (f.type === 'url' && !isLink(String(v).trim())) return { path, message: `${label} must be a web address (https://…) or a page of this site.` };
+    if ((f.type === 'url' || f.type === 'file') && !/^file:[a-f0-9-]{36}$/.test(String(v).trim()) && !isLink(String(v).trim())) return { path, message: `${label} must be a web address (https://…) or a page of this site.` };
     if (f.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return { path, message: `${label} is not a valid date.` };
   }
   return null;
@@ -68,13 +70,15 @@ function inputHTML(f, path, v) {
     case 'checkbox':
       return `<label class="ed-check ${f.half ? 'ed-half' : ''}"><input type="checkbox" ${common}${v ? ' checked' : ''}> <span>${h(f.label)}</span></label>`;
     case 'select':
-      return `<label class="${cls}">${label}<select ${common}>${f.options.map(([o, t]) => `<option value="${h(o)}"${String(v ?? '') === o ? ' selected' : ''}>${h(t)}</option>`).join('')}</select>${hint}</label>`;
+      return `<label class="${cls}">${label}<select ${common}>${optionsOf(f).map(([o, t]) => `<option value="${h(o)}"${String(v ?? '') === o ? ' selected' : ''}>${h(t)}</option>`).join('')}</select>${hint}</label>`;
     case 'textarea':
     case 'rich':
     case 'lines':
       return `<label class="${cls} ed-wide">${label}<textarea ${common} rows="${f.rows || 3}">${h(v ?? '')}</textarea>${hint}${f.type === 'rich' ? '<div class="ed-rich-preview" aria-hidden="true"></div>' : ''}</label>`;
     case 'image':
       return imageFieldHTML(f, path, v);
+    case 'file':
+      return fileFieldHTML(f, path, v);
     case 'number':
       return `<label class="${cls}">${label}<input type="number" ${common} value="${h(v ?? '')}"${f.min !== undefined ? ` min="${f.min}"` : ''}${f.max !== undefined ? ` max="${f.max}"` : ''}>${hint}</label>`;
     default: {
@@ -126,6 +130,7 @@ export function createForm(root, fields, initial, { app, onChange }) {
   }
   function afterRender(scope) {
     for (const box of $$('[data-image]', scope)) wireImage(box, app, (ref) => setPath(box.dataset.image, ref));
+    for (const box of root.querySelectorAll('[data-file]')) if (scope.contains(box) && !box.dataset.wired) { box.dataset.wired = '1'; wireFile(box, app, (ref) => setPath(box.dataset.file, ref)); }
     for (const t of $$('textarea', scope)) richPreview(t);
     for (const d of $$('details[data-item]', scope)) if (open.has(d.dataset.item) && !d.open) { d.open = true; fillItem(d); }
   }
