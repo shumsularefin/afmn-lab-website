@@ -5,3 +5,9 @@ Thumbs.db
 desktop.ini
 public/media/
 *-debug.log
+
+# LabBoard: built into public/update by the deploy workflows (source in labboard/)
+public/update/
+labboard/node_modules/
+labboard/.env.local
+labboard/.env.*.local

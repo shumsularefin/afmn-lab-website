@@ -47,6 +47,10 @@ Text fields accept a little formatting: `**bold**`, `*italic*`, `[link text](htt
 
 The super-admin adds people under **Editors & activity**: their Google email, a role, Active. Disable or remove access when someone leaves; the activity log keeps the history. Every change is logged with the person and the server time, and the log cannot be edited. Permissions are enforced by `firestore.rules` on the server, not only by hiding buttons.
 
+## LabBoard shares this project
+
+The instrument board at `/update` ([labboard/README.md](labboard/README.md)) uses the same Firebase project, Google sign-in and `firestore.rules` file, in its own collections (`users`, `allowlist`, `instruments`, `sessions`, `bookings`, `templates`, `issues`, `maintenance`). Those rules sit in a clearly marked "LabBoard" section at the end of `firestore.rules`; always deploy the whole file, never only a part. Website editors and LabBoard users are separate lists: being a website editor gives no LabBoard access, and vice versa.
+
 ## How it fits together
 
 ```

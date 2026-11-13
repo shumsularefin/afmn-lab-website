@@ -1,0 +1,28 @@
+{
+  "name": "labboard",
+  "private": true,
+  "version": "3.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:rules": "firebase emulators:exec --config ../firebase.json --only firestore --project demo-labboard-test \"node --test tests/rules.test.mjs\"",
+    "emulators": "firebase emulators:start --config ../firebase.json --only auth,firestore --project demo-afmn",
+    "dev:emu": "VITE_USE_EMULATORS=true vite"
+  },
+  "dependencies": {
+    "firebase": "^11.10.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.4.1"
+  }
+}

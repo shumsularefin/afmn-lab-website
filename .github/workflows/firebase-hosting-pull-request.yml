@@ -18,6 +18,11 @@ jobs:
           node-version: '22'
       - name: Bake content published from the Lab Dashboard
         run: node scripts/bake-content.mjs
+      - name: Build LabBoard (served at /update)
+        working-directory: labboard
+        run: |
+          npm ci
+          npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

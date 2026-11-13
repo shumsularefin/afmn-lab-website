@@ -6,9 +6,13 @@ Static website for the Advanced Functional Materials and Nanotechnology Laborato
 
 Almost everything on the site (members and their photos, publications, news, research areas, instruments, openings, announcements, gallery, teaching, the PI profile and contact details) is edited in the **Lab Dashboard** at `/admin.html`, with Google sign-in, roles, drafts, preview, publishing and an activity log. It follows the ACS GSTU Chapter Editor and runs on the free Firebase plan. See [DASHBOARD.md](DASHBOARD.md) for the editor guide and the one-time Firebase setup (Firestore, Google sign-in, security rules).
 
+## LabBoard (instrument board)
+
+The lab's shared instruments are managed in **LabBoard** at **https://afmn-lab.web.app/update**: live status of every instrument, who is using it and which settings must not be touched, bookings, history, maintenance and a big-screen mode for the lab monitor. Its source is in [`labboard/`](labboard/) (React + Vite, builds into `public/update`); see [labboard/README.md](labboard/README.md) for the go-live steps, access control and limits. It shares the Firebase project and `firestore.rules` with the Lab Dashboard above.
+
 ## Deploying with Firebase Hosting
 
-The site is served from `public/`. Firebase Hosting deploys pushes to `main` to the live channel and creates preview deployments for pull requests. Firebase CLI stores the deployment credential in the repository secret `FIREBASE_SERVICE_ACCOUNT_AFMN_LAB`.
+The site is served from `public/` (LabBoard is built into `public/update/` by the workflows; that folder is not committed). Firebase Hosting deploys pushes to `main` to the live channel and creates preview deployments for pull requests. Firebase CLI stores the deployment credential in the repository secret `FIREBASE_SERVICE_ACCOUNT_AFMN_LAB`.
 
 Firebase Hosting URL: https://afmn-lab.web.app
 

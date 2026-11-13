@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply text-slate-900 antialiased dark:text-slate-100;
+  }
+  input[type='datetime-local'],
+  input[type='date'] {
+    color-scheme: light;
+  }
+  .dark input[type='datetime-local'],
+  .dark input[type='date'],
+  .dark select {
+    color-scheme: dark;
+  }
+}
