@@ -9,7 +9,7 @@ import { Badge, Button, Card, EmptyState, Field, Icon, Input, Modal, PageHeader,
 
 export function maintenanceState(m, now = new Date()) {
   const due = toDate(m.nextDue);
-  if (!due) return { label: 'No schedule', cls: 'text-slate-500', chip: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', rank: 3 };
+  if (!due) return { label: 'No schedule', cls: 'text-slate-500', chip: 'bg-slate-100 text-slate-700 dark:bg-white/[0.08] dark:text-slate-300', rank: 3 };
   const days = (due - now) / 864e5;
   if (days < 0) return { label: `Overdue ${Math.ceil(-days)} d`, cls: 'font-semibold text-rose-600', chip: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200', rank: 0 };
   if (days < 14) return { label: `Due in ${Math.ceil(days)} d`, cls: 'font-semibold text-amber-600', chip: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200', rank: 1 };
@@ -73,14 +73,14 @@ export default function Maintenance() {
       {!rows.length ? (
         <EmptyState icon="wrench" title="No maintenance items">{isAdmin ? 'Add the first one.' : 'Admins add service schedules here.'}</EmptyState>
       ) : (
-        <Card className="divide-y divide-slate-100 dark:divide-slate-800">
+        <Card className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
           {rows.map((m) => {
             const st = maintenanceState(m);
             return (
               <div key={m.id} className="flex flex-wrap items-center gap-3 p-4">
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-slate-900 dark:text-white">
-                    {m.title} <Badge className="ml-1 bg-slate-100 capitalize text-slate-600 dark:bg-slate-800 dark:text-slate-300">{m.kind}</Badge>
+                    {m.title} <Badge className="ml-1 bg-slate-100 capitalize text-slate-600 dark:bg-white/[0.08] dark:text-slate-300">{m.kind}</Badge>
                   </div>
                   <div className="text-sm text-slate-500">
                     {m.instrumentName} · every {m.intervalDays || '–'} d · last serviced {fmtDate(m.lastServiced)} · next due {fmtDate(m.nextDue)}

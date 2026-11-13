@@ -62,16 +62,17 @@ All three versions are in this codebase. They are listed separately so you can r
 
 ### Version 3: management
 - **Admin panel:**
-  - add and edit instruments (photo URL, location, manual link, safety notes, required training, max booking length, restricted flag)
+  - add and edit instruments (**uploaded photo**, location, manual link, safety notes, required training, max booking length, restricted flag)
   - mark an instrument out of service or back in service
   - approve or revoke users and change roles
   - **training approvals** per restricted instrument
   - pre-approved email list (paste many at once)
   - force-finish stale sessions
+  - **Photos library:** every uploaded image with where it is used, storage total, and one-click cleanup of unused photos
   - load sample data
   - CSV exports
 - **Instrument detail page:** photo, location, manual, safety notes, required training (and whether *you* are approved), live status, upcoming bookings, maintenance, open issues, recent sessions.
-- **Issue reports:** a flag button on every card and detail page, with a severity level. Admins resolve issues, and critical issues come with a one-click “mark out of service”.
+- **Issue reports:** a flag button on every card and detail page, with a severity level and **up to 4 photos** (camera on phones, drag-drop or paste on desktop). Admins resolve issues, and critical issues come with a one-click “mark out of service”.
 - **Maintenance & calibration schedule:** interval, last-serviced and next-due dates, overdue and due-soon highlighting, a “Serviced today” log button, and CSV export.
 - **Usage statistics:** hours per instrument, per person and per month, plus idle capacity. Summary and raw CSV export.
 - **Notifications** (in-app plus browser notifications while LabBoard is open):
@@ -109,7 +110,7 @@ afmn-lab-website/
 
 ## Data model (Firestore collections)
 
-The seven requested collections, plus one small helper (`allowlist`) for pre-approved emails.
+The seven requested collections, plus two helpers: `allowlist` for pre-approved emails and `labImages` for uploaded photos.
 
 | Collection | Doc ID | Key fields |
 |---|---|---|
@@ -118,9 +119,10 @@ The seven requested collections, plus one small helper (`allowlist`) for pre-app
 | `sessions` | auto | `instrumentId`, `instrumentName`, `userId`, `userName`, `userPhoto`, `sample`, `params: [{key,value}]`, `comments`, `startedAt`, `expectedEnd`, `endedAt`, `status` (`active`/`finished`), `bookingId`, `extendedCount` |
 | `bookings` | auto | `instrumentId`, `userId`, `userName`, `start`, `end`, `purpose`, `status` (`booked`/`started`/`cancelled`/`released`), `sessionId` |
 | `templates` | auto | `instrumentId`, `name`, `params`, `createdBy` |
-| `issues` | auto | `instrumentId`, `reportedBy`, `description`, `severity`, `status` (`open`/`resolved`), `resolvedBy`, `resolution` |
+| `issues` | auto | `instrumentId`, `reportedBy`, `description`, `severity`, `photos: [lbimg:<id>]` (≤ 4), `status` (`open`/`resolved`), `resolvedBy`, `resolution` |
 | `maintenance` | auto | `instrumentId`, `kind` (`maintenance`/`calibration`), `title`, `intervalDays`, `lastServiced`, `nextDue`, `log[]` |
 | `allowlist` | lower-case email | `role` |
+| `labImages` | auto | `image` (JPEG data URL, ≤ 280 000 chars), `name`, `kind` (`instrument`/`issue`/`other`), `createdBy`, `createdByName`, `createdAt`. Immutable; deletable by the uploader or an admin. |
 
 `instruments.activeSession` is a small lock. A session is started in a **transaction** that creates the session and claims the instrument together, so two people can never start on the same instrument at once. The rules verify the lock points at a real session owned by the caller (`getAfter`).
 
@@ -217,7 +219,7 @@ Spark is generous for a single lab, but it has **no Cloud Functions** (no server
 | **Auto-release of no-show bookings** | Done **client-side**: any open LabBoard (the lab monitor counts) releases bookings 30 min after their start. The rules enforce that nobody can release a booking earlier. If **no** LabBoard is open anywhere, the booking simply *looks* expired (the UI already treats it as released) and is cleaned up the next time someone opens the app. | A scheduled Cloud Function (Blaze) could do it on the server. |
 | **Booking overlap prevention** | Firestore rules can't query other documents, so overlap is checked on the client against fresh server data. Then a **race guard** re-reads after writing: if two people booked the same slot within milliseconds, the later one is deleted and told. Max length, future-only, training and ownership **are** enforced by the rules. | A Cloud Function or per-slot lock documents could make it fully server-enforced. |
 | **Overdue sessions** | The card turns orange and the owner is prompted whenever they have LabBoard open. Nothing finishes a session automatically, by design: only the owner (or an admin, via **Admin → Active sessions → Force finish**) may end it. | Auto-finishing or emailing the owner would need a server. |
-| **Instrument photos** | Paste an **image URL** (e.g. from your lab website, Google Drive public link, Imgur). | Uploading files needs Cloud Storage, which needs Blaze on new projects. |
+| **Photo uploads** | Same approach as the ACS GSTU site: the browser resizes and JPEG-compresses each photo (long edge ≤ 1600 px, stepping down size/quality until it fits ≈ 200 KB) and stores it as a data URL in its own `labImages` document. Instruments and issues only keep a short `lbimg:<id>` reference, so the live board stays cheap to load; images are fetched once and cached. The rules check type, size and ownership. Existing `https://` photo URLs still work. | Full-resolution originals or videos would need Cloud Storage (Blaze on new projects). |
 | **Quotas** | The website and LabBoard **share one Firestore quota**. Spark gives **50 000 reads, 20 000 writes, 1 GiB storage per day** for Firestore and **10 GB/month** hosting transfer. A lab of ~30 people with ~20 instruments uses a small fraction of this. Listeners are scoped (only active sessions, recent bookings), history/stats use one-shot queries, and Firestore's offline cache cuts repeat reads. | If you outgrow it (hundreds of users, many always-on monitors), Blaze is pay-as-you-go and has the same free tier included. |
 | **Time zones** | All times are shown in each browser's local time zone. For a single-site lab that's correct. | — |
 | **Clock skew** | Countdown/overdue use the device clock. Release timing is validated by the server clock in the rules. | — |

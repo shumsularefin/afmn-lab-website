@@ -4,11 +4,11 @@ export const AUTO_RELEASE_MIN = 30;
 export const DEFAULT_MAX_BOOKING_HOURS = 12;
 
 export const STATUS = {
-  free: { label: 'Free now', dot: 'bg-emerald-500', ring: 'ring-emerald-500/30', text: 'text-emerald-700 dark:text-emerald-300', chip: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' },
-  busy: { label: 'In use', dot: 'bg-sky-500', ring: 'ring-sky-500/30', text: 'text-sky-700 dark:text-sky-300', chip: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200' },
-  overdue: { label: 'Overdue', dot: 'bg-orange-500', ring: 'ring-orange-500/60', text: 'text-orange-700 dark:text-orange-300', chip: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200' },
-  booked: { label: 'Booked later today', dot: 'bg-violet-500', ring: 'ring-violet-500/30', text: 'text-violet-700 dark:text-violet-300', chip: 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200' },
-  oos: { label: 'Out of service', dot: 'bg-rose-500', ring: 'ring-rose-500/30', text: 'text-rose-700 dark:text-rose-300', chip: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200' },
+  free: { label: 'Free now', dot: 'bg-emerald-500', ring: 'ring-emerald-500/30', text: 'text-emerald-700 dark:text-emerald-300', chip: 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
+  busy: { label: 'In use', dot: 'bg-sky-500', ring: 'ring-sky-500/30', text: 'text-sky-700 dark:text-sky-300', chip: 'bg-sky-500/10 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' },
+  overdue: { label: 'Overdue', dot: 'bg-orange-500', ring: 'ring-orange-500/60', text: 'text-orange-700 dark:text-orange-300', chip: 'bg-orange-500/10 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300' },
+  booked: { label: 'Booked later today', dot: 'bg-violet-500', ring: 'ring-violet-500/30', text: 'text-violet-700 dark:text-violet-300', chip: 'bg-violet-500/10 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' },
+  oos: { label: 'Out of service', dot: 'bg-rose-500', ring: 'ring-rose-500/30', text: 'text-rose-700 dark:text-rose-300', chip: 'bg-rose-500/10 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' },
 };
 
 /** A booking still "counts" if booked/started and not a no-show past the grace period. */

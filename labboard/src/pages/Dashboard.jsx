@@ -55,8 +55,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Lab status</h1>
-        <span className="font-mono text-sm tabular-nums text-slate-500">{now.toLocaleTimeString()}</span>
+        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[26px]">Lab status</h1>
+        <span className="font-mono text-[13px] tabular-nums text-slate-500 sm:hidden">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
 
       <SummaryStrip counts={counts} active={group} onSelect={setGroup} />
@@ -69,8 +69,8 @@ export default function Dashboard() {
         if (!items.length) return null;
         return (
           <section key={k}>
-            <h2 className={`mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide ${STATUS[k].text}`}>
-              <span className={`h-2 w-2 rounded-full ${STATUS[k].dot}`} /> {GROUP_TITLE[k]} <span className="text-slate-400">({items.length})</span>
+            <h2 className="mb-2.5 flex items-center gap-2 px-0.5 text-[17px] font-semibold text-slate-900 dark:text-white lg:text-[15px]">
+              <span className={`h-2.5 w-2.5 rounded-full ${STATUS[k].dot}`} /> {GROUP_TITLE[k]} <span className="font-normal text-slate-400">{items.length}</span>
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {items.map(({ inst, d }) => (

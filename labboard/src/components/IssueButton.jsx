@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Field, Icon, Modal, Select, Textarea } from './ui';
+import { Button, Field, Icon, Modal, Segmented, Textarea } from './ui';
+import { PhotoAttachments } from './images';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { reportIssue } from '../lib/data';
@@ -10,6 +11,7 @@ export function IssueButton({ instrument, compact }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [severity, setSeverity] = useState('minor');
+  const [photos, setPhotos] = useState([]);
   const [busy, setBusy] = useState(false);
   if (!isApproved) return null;
 
@@ -17,10 +19,11 @@ export function IssueButton({ instrument, compact }) {
     if (!text.trim()) return;
     setBusy(true);
     try {
-      await reportIssue({ instrument, profile, description: text, severity });
+      await reportIssue({ instrument, profile, description: text, severity, photos });
       toast.success('Issue reported. Admins will see it in the admin panel.');
       setOpen(false);
       setText('');
+      setPhotos([]);
     } catch (e) {
       toast.error(e);
     } finally {
@@ -40,8 +43,8 @@ export function IssueButton({ instrument, compact }) {
         title="Report an issue"
         className={
           compact
-            ? 'rounded-lg p-1.5 text-slate-400 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950'
-            : 'inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-amber-700 ring-1 ring-inset ring-amber-300 hover:bg-amber-50 dark:text-amber-300 dark:ring-amber-800 dark:hover:bg-amber-950'
+            ? 'rounded-full p-1.5 text-slate-400 transition hover:bg-orange-500/10 hover:text-orange-500'
+            : 'inline-flex h-9 items-center gap-1.5 rounded-full bg-orange-500/10 px-4 text-[13px] font-semibold text-orange-600 transition hover:bg-orange-500/15 dark:text-orange-400 lg:h-8'
         }
       >
         <Icon name="flag" className="h-4 w-4" />
@@ -62,13 +65,22 @@ export function IssueButton({ instrument, compact }) {
           <Field label="What's wrong?">
             <Textarea autoFocus rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Stage drifts after 20 min, error E42 on startup…" />
           </Field>
-          <Field label="Severity">
-            <Select value={severity} onChange={(e) => setSeverity(e.target.value)}>
-              <option value="minor">Minor – still usable</option>
-              <option value="major">Major – results may be affected</option>
-              <option value="critical">Critical – do not use</option>
-            </Select>
-          </Field>
+          <div>
+            <span className="mb-1.5 block text-[13px] font-medium text-slate-600 dark:text-slate-300">Severity</span>
+            <Segmented
+              value={severity}
+              onChange={setSeverity}
+              className="flex w-full [&>button]:flex-1"
+              options={[{ value: 'minor', label: 'Minor' }, { value: 'major', label: 'Major' }, { value: 'critical', label: 'Critical' }]}
+            />
+            <span className="mt-1.5 block text-xs text-slate-500">
+              {{ minor: 'Still usable.', major: 'Results may be affected.', critical: 'Do not use – admins can take it out of service.' }[severity]}
+            </span>
+          </div>
+          <div>
+            <span className="mb-1.5 block text-[13px] font-medium text-slate-600 dark:text-slate-300">Photos <span className="font-normal text-slate-400">(optional, up to 4)</span></span>
+            <PhotoAttachments value={photos} onChange={setPhotos} />
+          </div>
         </div>
       </Modal>
     </>

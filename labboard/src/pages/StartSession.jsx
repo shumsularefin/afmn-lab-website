@@ -121,7 +121,7 @@ export default function StartSession() {
               onClick={() => setInstrumentId(i.id)}
               className={cx(
                 'flex items-center gap-3 rounded-xl p-3 text-left ring-1 ring-inset transition',
-                instrumentId === i.id ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:ring-slate-700 dark:hover:bg-slate-700',
+                instrumentId === i.id ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white ring-black/[0.06] hover:bg-slate-50 dark:bg-white/[0.08] dark:ring-white/10 dark:hover:bg-white/[0.12]',
                 reason && 'cursor-not-allowed opacity-50',
               )}
             >

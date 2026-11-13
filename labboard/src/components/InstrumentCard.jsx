@@ -4,6 +4,9 @@ import { fmtCountdown, fmtDuration, fmtTime, fmtDateTime, toDate, MIN } from '..
 import { Avatar, Badge, Icon, cx } from './ui';
 import { LockedParams } from './LockedParams';
 import { IssueButton } from './IssueButton';
+import { LabImage } from './images';
+
+const PILL = 'inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition active:scale-[0.98] lg:h-8';
 
 export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = false, onFinish, onExtend }) {
   const st = STATUS[d.kind];
@@ -14,19 +17,31 @@ export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = 
   return (
     <div
       className={cx(
-        'relative flex min-w-0 flex-col rounded-2xl bg-white shadow-sm ring-1 transition dark:bg-slate-900',
-        d.kind === 'overdue' ? 'ring-2 ring-orange-500 bg-orange-50/60 dark:bg-orange-950/30' : 'ring-slate-200 dark:ring-slate-800',
+        'relative flex min-w-0 flex-col rounded-2xl bg-white shadow-card ring-1 transition hover:shadow-md dark:bg-slate-900 lg:rounded-xl',
+        d.kind === 'overdue' ? 'ring-2 ring-orange-500 bg-orange-50/70 dark:bg-orange-500/10' : 'ring-black/[0.06] dark:ring-white/[0.07]',
         big ? 'p-6' : 'p-4',
       )}
     >
       {/* Header */}
       <div className="flex items-start gap-3">
-        <span className={cx('mt-1.5 h-3 w-3 shrink-0 rounded-full', st.dot, (d.kind === 'busy' || d.kind === 'overdue') && 'animate-pulse')} />
+        <div className={cx('relative shrink-0', big ? 'h-16 w-16' : 'h-11 w-11')}>
+          <LabImage
+            value={inst.photoURL}
+            alt=""
+            className="h-full w-full rounded-[10px] ring-1 ring-black/5 dark:ring-white/10"
+            fallback={
+              <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 dark:from-white/10 dark:to-white/[0.03] dark:text-slate-400">
+                <Icon name="grid" className="h-5 w-5" />
+              </div>
+            }
+          />
+          <span className={cx('absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full ring-[2.5px] ring-white dark:ring-slate-900', st.dot, (d.kind === 'busy' || d.kind === 'overdue') && 'animate-pulse')} />
+        </div>
         <div className="min-w-0 flex-1">
-          <Link to={`/instrument/${inst.id}`} className={cx('block truncate font-bold text-slate-900 hover:text-indigo-600 dark:text-white', big ? 'text-2xl' : 'text-base')}>
+          <Link to={`/instrument/${inst.id}`} className={cx('block truncate font-semibold text-slate-900 hover:text-indigo-600 dark:text-white', big ? 'text-2xl' : 'text-[15px]')}>
             {inst.name}
           </Link>
-          <div className={cx('truncate text-slate-500 dark:text-slate-400', big ? 'text-base' : 'text-xs')}>
+          <div className={cx('truncate text-slate-500 dark:text-slate-400', big ? 'text-base' : 'text-[12px]')}>
             {[inst.type, inst.room].filter(Boolean).join(' · ')}
             {inst.restricted && <span title="Training required"> · 🎓</span>}
           </div>
@@ -74,12 +89,12 @@ export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = 
               </div>
             </div>
             {d.overdue && (
-              <div className="rounded-xl bg-orange-100 px-3 py-2 text-sm font-semibold text-orange-800 dark:bg-orange-900/60 dark:text-orange-100">
+              <div className="rounded-lg bg-orange-100 px-3 py-2 text-[13px] font-medium text-orange-900 dark:bg-orange-500/15 dark:text-orange-200">
                 ⏰ Past expected end by {fmtDuration(-remaining)} — {mine ? 'please confirm or finish.' : `${s.userName.split(' ')[0]} has been asked to confirm.`}
               </div>
             )}
             <LockedParams params={s.params} big={big} />
-            {s.comments && <p className="whitespace-pre-line rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">💬 {s.comments}</p>}
+            {s.comments && <p className="whitespace-pre-line rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-700 dark:bg-white/[0.05] dark:text-slate-200">💬 {s.comments}</p>}
             {d.nextBooking && <p className="text-xs text-slate-500">Next: {d.nextBooking.userName} {fmtDateTime(d.nextBooking.start)}</p>}
           </>
         )}
@@ -114,7 +129,7 @@ export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = 
 
         {/* OUT OF SERVICE */}
         {d.kind === 'oos' && (
-          <div className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/60 dark:text-rose-200">
+          <div className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-800 dark:bg-rose-500/10 dark:text-rose-200">
             <b>Out of service.</b> {inst.outOfServiceReason || 'No reason given.'}
           </div>
         )}
@@ -122,26 +137,26 @@ export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = 
 
       {/* Actions */}
       {!big && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-black/[0.05] pt-3 dark:border-white/[0.06]">
           {mine ? (
             <>
-              <button onClick={() => onFinish?.(s)} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-500">
+              <button onClick={() => onFinish?.(s)} className={cx(PILL, 'flex-1 bg-gradient-to-b from-emerald-400 to-emerald-500 text-white shadow-[inset_0_0.5px_0_rgba(255,255,255,.3)]')}>
                 ✓ Finish
               </button>
-              <button onClick={() => onExtend?.(s)} className="flex-1 rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700">
-                +1h Extend
+              <button onClick={() => onExtend?.(s)} className={cx(PILL, 'flex-1 bg-white text-slate-900 shadow-control hover:bg-slate-50 dark:bg-white/[0.12] dark:text-white')}>
+                +1h
               </button>
             </>
           ) : (
             (d.kind === 'free' || (d.kind === 'booked' && (!d.currentBooking || d.currentBooking.userId === myUid))) && (
-              <Link to={`/start?instrument=${inst.id}`} className="flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-center text-sm font-bold text-white hover:bg-indigo-500">
-                <Icon name="play" className="mr-1 inline h-4 w-4" /> Start
+              <Link to={`/start?instrument=${inst.id}`} className={cx(PILL, 'flex-1 bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-[inset_0_0.5px_0_rgba(255,255,255,.35)] hover:from-indigo-400')}>
+                <Icon name="play" className="h-4 w-4" strokeWidth={2.2} /> Start
               </Link>
             )
           )}
           {d.kind !== 'oos' && (
-            <Link to={`/bookings?instrument=${inst.id}`} className="rounded-xl px-3 py-2 text-center text-sm font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800">
-              <Icon name="calendar" className="mr-1 inline h-4 w-4" /> Book
+            <Link to={`/bookings?instrument=${inst.id}`} className={cx(PILL, 'bg-slate-100 text-indigo-600 hover:bg-slate-200/70 dark:bg-white/[0.08] dark:text-indigo-400 dark:hover:bg-white/[0.12]')}>
+              <Icon name="calendar" className="h-4 w-4" strokeWidth={2} /> Book
             </Link>
           )}
         </div>

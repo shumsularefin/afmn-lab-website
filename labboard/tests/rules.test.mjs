@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, writeBatch, Timestamp, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, Timestamp, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 let env;
 const H = 3600e3;
@@ -198,6 +198,39 @@ describe('templates, issues, maintenance', () => {
   test('only admins write maintenance', async () => {
     await assertFails(addDoc(collection(as(users.alice), 'maintenance'), { title: 'x' }));
     await assertSucceeds(addDoc(collection(as(users.admin), 'maintenance'), { title: 'x' }));
+  });
+});
+
+describe('uploaded images', () => {
+  const JPEG = 'data:image/jpeg;base64,' + 'A'.repeat(1000);
+  const img = (uid, kind = 'issue', extra = {}) => ({ image: JPEG, name: 'photo.jpg', kind, createdBy: uid, createdByName: uid, createdAt: serverTimestamp(), ...extra });
+
+  test('approved users attach issue photos; pending users cannot', async () => {
+    await assertSucceeds(setDoc(doc(as(users.guest), 'labImages', 'a'), img('guest')));
+    await assertFails(setDoc(doc(as(users.pending), 'labImages', 'b'), img('pending')));
+  });
+  test('only admins upload instrument photos', async () => {
+    await assertFails(setDoc(doc(as(users.alice), 'labImages', 'a'), img('alice', 'instrument')));
+    await assertSucceeds(setDoc(doc(as(users.admin), 'labImages', 'a'), img('admin', 'instrument')));
+  });
+  test('only small JPEG data URLs, stored under your own uid', async () => {
+    await assertFails(setDoc(doc(as(users.alice), 'labImages', 'a'), img('bob')));
+    await assertFails(setDoc(doc(as(users.alice), 'labImages', 'a'), img('alice', 'issue', { image: 'data:image/png;base64,AAAA' })));
+    await assertFails(setDoc(doc(as(users.alice), 'labImages', 'a'), img('alice', 'issue', { image: 'data:image/jpeg;base64,' + 'A'.repeat(280001) })));
+    await assertFails(setDoc(doc(as(users.alice), 'labImages', 'a'), img('alice', 'issue', { extra: 1 })));
+  });
+  test('images never change; the uploader or an admin deletes them', async () => {
+    await assertSucceeds(setDoc(doc(as(users.alice), 'labImages', 'a'), img('alice')));
+    await assertFails(updateDoc(doc(as(users.alice), 'labImages', 'a'), { name: 'x' }));
+    await assertFails(deleteDoc(doc(as(users.bob), 'labImages', 'a')));
+    await assertSucceeds(deleteDoc(doc(as(users.alice), 'labImages', 'a')));
+    await assertSucceeds(setDoc(doc(as(users.alice), 'labImages', 'b'), img('alice')));
+    await assertSucceeds(deleteDoc(doc(as(users.admin), 'labImages', 'b')));
+  });
+  test('issue reports carry at most 4 photos', async () => {
+    const issue = (photos) => ({ instrumentId: 'pcr', reportedBy: 'alice', description: 'x', status: 'open', photos });
+    await assertSucceeds(addDoc(collection(as(users.alice), 'issues'), issue(['lbimg:a', 'lbimg:b'])));
+    await assertFails(addDoc(collection(as(users.alice), 'issues'), issue(['1', '2', '3', '4', '5'])));
   });
 });
 

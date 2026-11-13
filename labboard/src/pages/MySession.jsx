@@ -46,7 +46,7 @@ export default function MySession() {
       {myBookings.length > 0 && (
         <Card className="p-5">
           <h2 className="mb-3 font-semibold text-slate-900 dark:text-white">My upcoming bookings</h2>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
             {myBookings.map((b) => {
               const startable = toDate(b.start) - now < 30 * MIN;
               return (
@@ -112,7 +112,7 @@ function SessionPanel({ s, now }) {
             <div className="text-sm opacity-90">{s.sample || 'No sample name'}</div>
           </div>
           <div className="text-right">
-            <div className="font-mono text-4xl font-extrabold tabular-nums">{fmtCountdown(remaining)}</div>
+            <div className="font-mono text-4xl font-bold tabular-nums">{fmtCountdown(remaining)}</div>
             <div className="text-xs font-semibold uppercase tracking-wide opacity-90">{overdue ? 'over expected end' : 'remaining'}</div>
           </div>
         </div>
@@ -141,7 +141,7 @@ function SessionPanel({ s, now }) {
           <Button variant="ghost" size="sm" onClick={() => setCustom((c) => !c)}>Set exact end…</Button>
         </div>
         {custom && (
-          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
+          <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/[0.08]/60">
             <EndTimePicker value={newEnd} onChange={setNewEnd} />
             <Button className="mt-3" size="sm" disabled={!newEnd || newEnd <= new Date()} onClick={() => run(async () => (await extend(s, newEnd)) && setCustom(false))}>
               Save end time
@@ -162,7 +162,7 @@ function SessionPanel({ s, now }) {
         ) : (
           <>
             <LockedParams params={s.params} />
-            {s.comments ? <p className="whitespace-pre-line rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800">💬 {s.comments}</p> : null}
+            {s.comments ? <p className="whitespace-pre-line rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-white/[0.08]">💬 {s.comments}</p> : null}
             <Button variant="secondary" size="sm" onClick={() => { setComments(s.comments || ''); setParams(s.params || []); setEditing(true); }}>
               <Icon name="edit" className="h-4 w-4" /> Edit comments & parameters
             </Button>

@@ -26,7 +26,7 @@ export function EndTimePicker({ value, onChange, base = new Date() }) {
               onClick={() => pick(target)}
               className={cx(
                 'rounded-xl py-3 text-sm font-bold ring-1 ring-inset transition',
-                active ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-slate-800 ring-slate-300 hover:bg-indigo-50 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700',
+                active ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-slate-800 ring-black/10 hover:bg-indigo-50 dark:bg-white/[0.08] dark:text-slate-100 dark:ring-white/10',
               )}
             >
               {q.label}
@@ -38,7 +38,7 @@ export function EndTimePicker({ value, onChange, base = new Date() }) {
           onClick={() => onChange(nextMorning(base))}
           className={cx(
             'col-span-2 rounded-xl py-3 text-sm font-bold ring-1 ring-inset transition sm:col-span-1',
-            value && +value === +nextMorning(base) ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-slate-800 ring-slate-300 hover:bg-indigo-50 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700',
+            value && +value === +nextMorning(base) ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-slate-800 ring-black/10 hover:bg-indigo-50 dark:bg-white/[0.08] dark:text-slate-100 dark:ring-white/10',
           )}
         >
           🌙 Overnight
