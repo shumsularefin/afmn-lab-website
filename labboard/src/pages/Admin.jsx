@@ -108,9 +108,9 @@ function InstrumentsTab({ editId, clearEdit }) {
                 <div className="font-semibold text-slate-900 dark:text-white">
                   {i.name} {i.restricted && <span title="Training required">🎓</span>}
                 </div>
-                <div className="text-xs text-slate-500">{[i.type, i.room, `max ${i.maxBookingHours || DEFAULT_MAX_BOOKING_HOURS} h`].filter(Boolean).join(' · ')}</div>
-                {i.status === 'out_of_service' && <div className="text-xs font-semibold text-rose-600">Out of service: {i.outOfServiceReason}</div>}
-                {sessionsByInstrument[i.id] && <div className="text-xs text-sky-600">In use by {sessionsByInstrument[i.id].userName}</div>}
+                <div className="text-sm text-slate-500">{[i.type, i.room, `max ${i.maxBookingHours || DEFAULT_MAX_BOOKING_HOURS} h`].filter(Boolean).join(' · ')}</div>
+                {i.status === 'out_of_service' && <div className="text-sm font-semibold text-rose-600">Out of service: {i.outOfServiceReason}</div>}
+                {sessionsByInstrument[i.id] && <div className="text-sm text-sky-600">In use by {sessionsByInstrument[i.id].userName}</div>}
               </div>
               <div className="flex flex-wrap gap-1">
                 {i.status === 'out_of_service' ? (
@@ -211,7 +211,7 @@ function UsersTab({ users }) {
               <div className="font-semibold text-slate-900 dark:text-white">
                 {u.name} {!u.approved && <Badge className="bg-amber-200 text-amber-900">Pending</Badge>}
               </div>
-              <div className="truncate text-xs text-slate-500">{u.email} · last seen {fmtDateTime(u.lastLoginAt)}</div>
+              <div className="truncate text-sm text-slate-500">{u.email} · last seen {fmtDateTime(u.lastLoginAt)}</div>
               {restricted.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {restricted.filter((i) => (u.trainedOn || []).includes(i.id)).map((i) => (
@@ -261,7 +261,7 @@ function UsersTab({ users }) {
                   />
                   <span>
                     <span className="block font-medium text-slate-900 dark:text-white">{i.name}</span>
-                    <span className="block text-xs text-slate-500">{i.requiredTraining}</span>
+                    <span className="block text-sm text-slate-500">{i.requiredTraining}</span>
                   </span>
                 </label>
               );
@@ -370,7 +370,7 @@ function IssuesTab() {
                 <div className="font-semibold text-slate-900 dark:text-white">{i.instrumentName}</div>
                 <p className="whitespace-pre-line text-sm text-slate-700 dark:text-slate-300">{i.description}</p>
                 {i.photos?.length > 0 && <div className="my-2"><PhotoStrip photos={i.photos} /></div>}
-                <div className="text-xs text-slate-500">
+                <div className="text-sm text-slate-500">
                   {i.reportedByName} · {fmtDateTime(i.createdAt)}
                   {i.status === 'resolved' && <> · resolved by {i.resolvedBy} {i.resolution && `– ${i.resolution}`}</>}
                 </div>
@@ -423,7 +423,7 @@ function SessionsTab() {
             <Avatar src={s.userPhoto} name={s.userName} />
             <div className="min-w-0 flex-1">
               <div className="font-semibold text-slate-900 dark:text-white">{s.instrumentName} · {s.userName}</div>
-              <div className={cx('text-xs', over ? 'font-semibold text-orange-600' : 'text-slate-500')}>
+              <div className={cx('text-sm', over ? 'font-semibold text-orange-600' : 'text-slate-500')}>
                 Started {fmtDateTime(s.startedAt)} · expected end {fmtDateTime(s.expectedEnd)} {over && `(overdue ${fmtDuration(now - toDate(s.expectedEnd))})`}
               </div>
             </div>

@@ -44,7 +44,7 @@ export function IssueButton({ instrument, compact }) {
         className={
           compact
             ? 'rounded-full p-1.5 text-slate-400 transition hover:bg-orange-500/10 hover:text-orange-500'
-            : 'inline-flex h-9 items-center gap-1.5 rounded-full bg-orange-500/10 px-4 text-[13px] font-semibold text-orange-600 transition hover:bg-orange-500/15 dark:text-orange-400 lg:h-8'
+            : 'inline-flex h-9 items-center gap-1.5 rounded-full bg-orange-500/10 px-4 text-sm font-semibold text-orange-600 transition hover:bg-orange-500/15 dark:text-orange-400'
         }
       >
         <Icon name="flag" className="h-4 w-4" />
@@ -66,7 +66,7 @@ export function IssueButton({ instrument, compact }) {
             <Textarea autoFocus rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Stage drifts after 20 min, error E42 on startup…" />
           </Field>
           <div>
-            <span className="mb-1.5 block text-[13px] font-medium text-slate-600 dark:text-slate-300">Severity</span>
+            <span className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-300">Severity</span>
             <Segmented
               value={severity}
               onChange={setSeverity}
@@ -78,7 +78,7 @@ export function IssueButton({ instrument, compact }) {
             </span>
           </div>
           <div>
-            <span className="mb-1.5 block text-[13px] font-medium text-slate-600 dark:text-slate-300">Photos <span className="font-normal text-slate-400">(optional, up to 4)</span></span>
+            <span className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-300">Photos <span className="font-normal text-slate-400">(optional, up to 4)</span></span>
             <PhotoAttachments value={photos} onChange={setPhotos} />
           </div>
         </div>

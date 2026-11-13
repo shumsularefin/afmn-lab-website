@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -35,7 +35,22 @@ export default function Dashboard() {
   const { loading, error, instruments, openIssues } = useData();
   const { finish, extend } = useSessionActions();
   const now = useNow(1000);
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  // Type/room filters are remembered on this device, so people who only care about their room set it once.
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('lb-filters') || '{}');
+      return { ...EMPTY_FILTERS, type: saved.type || '', room: saved.room || '' };
+    } catch {
+      return EMPTY_FILTERS;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('lb-filters', JSON.stringify({ type: filters.type, room: filters.room }));
+    } catch {
+      /* private mode: just don't remember */
+    }
+  }, [filters.type, filters.room]);
   const [group, setGroup] = useState(null);
 
   const all = useDerived(now);
@@ -55,8 +70,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       <div className="flex items-baseline justify-between">
-        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[26px]">Lab status</h1>
-        <span className="font-mono text-[13px] tabular-nums text-slate-500 sm:hidden">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        <h1 className="text-[30px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[28px]">Lab status</h1>
       </div>
 
       <SummaryStrip counts={counts} active={group} onSelect={setGroup} />
@@ -65,11 +79,11 @@ export default function Dashboard() {
       {!filtered.length && <EmptyState icon="search" title="Nothing matches your filters" />}
 
       {GROUP_ORDER.map((k) => {
-        const items = filtered.filter(({ d }) => d.kind === k);
+        const items = filtered.filter(({ d }) => d.kind === k).sort((a, b) => (b.d.session?.userId === profile.uid) - (a.d.session?.userId === profile.uid));
         if (!items.length) return null;
         return (
           <section key={k}>
-            <h2 className="mb-2.5 flex items-center gap-2 px-0.5 text-[17px] font-semibold text-slate-900 dark:text-white lg:text-[15px]">
+            <h2 className="mb-2.5 flex items-center gap-2 px-0.5 text-[17px] font-semibold text-slate-900 dark:text-white">
               <span className={`h-2.5 w-2.5 rounded-full ${STATUS[k].dot}`} /> {GROUP_TITLE[k]} <span className="font-normal text-slate-400">{items.length}</span>
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

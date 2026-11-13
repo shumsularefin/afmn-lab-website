@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -30,6 +30,11 @@ export default function Bookings() {
   const live = useMemo(() => bookings.filter((b) => ['booked', 'started'].includes(b.status) && bookingIsLive(b, now)), [bookings, now]);
   const forInst = live.filter((b) => b.instrumentId === instrumentId);
   const session = sessionsByInstrument[instrumentId];
+  // Open the calendar at the current time instead of 06:00, so nobody has to scroll to find "now".
+  useEffect(() => {
+    const t = setTimeout(() => document.getElementById('lb-now-line')?.scrollIntoView({ block: 'center' }), 50);
+    return () => clearTimeout(t);
+  }, [instrumentId]);
   const maxH = inst?.maxBookingHours || DEFAULT_MAX_BOOKING_HOURS;
   const allowed = inst && canUseInstrument(inst, profile);
 
@@ -130,7 +135,7 @@ export default function Bookings() {
                     );
                   })}
                   {sess && (
-                    <div className="pointer-events-none absolute inset-x-1 overflow-hidden rounded-md bg-sky-500 px-1 text-[11px] font-semibold text-white" style={{ top: top(sess.startedAt || now), height: Math.max(14, top(sess.expectedEnd) - top(sess.startedAt || now)) }}>
+                    <div className="pointer-events-none absolute inset-x-1 overflow-hidden rounded-md bg-sky-500 px-1 text-xs font-semibold text-white" style={{ top: top(sess.startedAt || now), height: Math.max(14, top(sess.expectedEnd) - top(sess.startedAt || now)) }}>
                       In use · {sess.userName}
                     </div>
                   )}
@@ -138,7 +143,7 @@ export default function Bookings() {
                     <div
                       key={b.id}
                       title={`${b.userName}: ${fmtTime(b.start)}–${fmtTime(b.end)} ${b.purpose || ''}`}
-                      className={cx('absolute inset-x-1 overflow-hidden rounded-md px-1 py-0.5 text-[11px] font-semibold text-white shadow', b.userId === profile.uid ? 'bg-indigo-600' : 'bg-violet-500')}
+                      className={cx('absolute inset-x-1 overflow-hidden rounded-md px-1 py-0.5 text-xs font-semibold text-white shadow', b.userId === profile.uid ? 'bg-indigo-600' : 'bg-violet-500')}
                       style={{ top: top(b.start), height: Math.max(14, top(b.end) - top(b.start)) }}
                     >
                       {fmtTime(b.start)} {b.userName}
@@ -146,7 +151,7 @@ export default function Bookings() {
                     </div>
                   ))}
                   {d.toDateString() === now.toDateString() && now.getHours() >= DAY_START_H && (
-                    <div className="pointer-events-none absolute inset-x-0 h-0.5 bg-rose-500" style={{ top: top(now) }} />
+                    <div id="lb-now-line" className="pointer-events-none absolute inset-x-0 h-0.5 scroll-mt-40 bg-rose-500" style={{ top: top(now) }} />
                   )}
                 </div>
               );

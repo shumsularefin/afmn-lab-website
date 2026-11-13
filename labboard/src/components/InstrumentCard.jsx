@@ -6,9 +6,9 @@ import { LockedParams } from './LockedParams';
 import { IssueButton } from './IssueButton';
 import { LabImage } from './images';
 
-const PILL = 'inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition active:scale-[0.98] lg:h-8';
+const PILL = 'inline-flex h-9 items-center justify-center gap-1 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold transition active:scale-[0.98]';
 
-export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = false, onFinish, onExtend }) {
+export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = false, showStatus = false, onFinish, onExtend }) {
   const st = STATUS[d.kind];
   const s = d.session;
   const mine = s && s.userId === myUid;
@@ -38,17 +38,17 @@ export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = 
           <span className={cx('absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full ring-[2.5px] ring-white dark:ring-slate-900', st.dot, (d.kind === 'busy' || d.kind === 'overdue') && 'animate-pulse')} />
         </div>
         <div className="min-w-0 flex-1">
-          <Link to={`/instrument/${inst.id}`} className={cx('block truncate font-semibold text-slate-900 hover:text-indigo-600 dark:text-white', big ? 'text-2xl' : 'text-[15px]')}>
+          <Link to={`/instrument/${inst.id}`} className={cx('line-clamp-2 font-semibold leading-snug text-slate-900 hover:text-indigo-600 dark:text-white', big ? 'text-2xl' : 'text-base')}>
             {inst.name}
           </Link>
-          <div className={cx('truncate text-slate-500 dark:text-slate-400', big ? 'text-base' : 'text-[12px]')}>
+          <div className={cx('text-slate-500 dark:text-slate-400', big ? 'text-base' : 'text-sm')}>
             {[inst.type, inst.room].filter(Boolean).join(' · ')}
             {inst.restricted && <span title="Training required"> · 🎓</span>}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {openIssueCount > 0 && <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">⚠ {openIssueCount}</Badge>}
-          <Badge className={st.chip}>{d.kind === 'booked' ? 'Booked' : st.label}</Badge>
+          {(big || showStatus) && <Badge className={st.chip}>{d.kind === 'booked' ? 'Booked' : st.label}</Badge>}
           {!big && <IssueButton instrument={inst} compact />}
         </div>
       </div>
@@ -89,12 +89,12 @@ export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = 
               </div>
             </div>
             {d.overdue && (
-              <div className="rounded-lg bg-orange-100 px-3 py-2 text-[13px] font-medium text-orange-900 dark:bg-orange-500/15 dark:text-orange-200">
+              <div className="rounded-lg bg-orange-100 px-3 py-2 text-sm font-medium text-orange-900 dark:bg-orange-500/15 dark:text-orange-200">
                 ⏰ Past expected end by {fmtDuration(-remaining)} — {mine ? 'please confirm or finish.' : `${s.userName.split(' ')[0]} has been asked to confirm.`}
               </div>
             )}
             <LockedParams params={s.params} big={big} />
-            {s.comments && <p className="whitespace-pre-line rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-700 dark:bg-white/[0.05] dark:text-slate-200">💬 {s.comments}</p>}
+            {s.comments && <p className="whitespace-pre-line rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-white/[0.05] dark:text-slate-200">💬 {s.comments}</p>}
             {d.nextBooking && <p className="text-xs text-slate-500">Next: {d.nextBooking.userName} {fmtDateTime(d.nextBooking.start)}</p>}
           </>
         )}
@@ -129,7 +129,7 @@ export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = 
 
         {/* OUT OF SERVICE */}
         {d.kind === 'oos' && (
-          <div className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-800 dark:bg-rose-500/10 dark:text-rose-200">
+          <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-500/10 dark:text-rose-200">
             <b>Out of service.</b> {inst.outOfServiceReason || 'No reason given.'}
           </div>
         )}
@@ -143,8 +143,8 @@ export function InstrumentCard({ inst, d, now, myUid, openIssueCount = 0, big = 
               <button onClick={() => onFinish?.(s)} className={cx(PILL, 'flex-1 bg-gradient-to-b from-emerald-400 to-emerald-500 text-white shadow-[inset_0_0.5px_0_rgba(255,255,255,.3)]')}>
                 ✓ Finish
               </button>
-              <button onClick={() => onExtend?.(s)} className={cx(PILL, 'flex-1 bg-white text-slate-900 shadow-control hover:bg-slate-50 dark:bg-white/[0.12] dark:text-white')}>
-                +1h
+              <button onClick={() => onExtend?.(s)} title="Extend by 1 hour" className={cx(PILL, 'flex-1 bg-white text-slate-900 shadow-control hover:bg-slate-50 dark:bg-white/[0.12] dark:text-white')}>
+                +1 h
               </button>
             </>
           ) : (

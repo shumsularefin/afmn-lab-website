@@ -18,8 +18,8 @@ export default {
         },
         // Neutral system grays (light: #f5f5f7 window, dark: #1c1c1e / #2c2c2e controls)
         slate: {
-          50: '#f5f5f7', 100: '#ececef', 200: '#dedee3', 300: '#c7c7cc', 400: '#a1a1a6', 500: '#86868b',
-          600: '#6e6e73', 700: '#48484a', 800: '#2c2c2e', 900: '#1f1f21', 950: '#161618',
+          50: '#f5f5f7', 100: '#ececef', 200: '#dedee3', 300: '#c7c7cc', 400: '#8e8e93', 500: '#6e6e73',
+          600: '#545458', 700: '#3a3a3c', 800: '#2c2c2e', 900: '#1f1f21', 950: '#161618',
         },
         // systemGreen / Red / Orange / Purple / Teal
         emerald: {

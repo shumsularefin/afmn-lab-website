@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 
 export function cx(...c) {
   return c.filter(Boolean).join(' ');
@@ -17,9 +17,9 @@ const BTN = {
   plain: 'text-slate-700 hover:bg-black/[0.05] active:bg-black/[0.08] dark:text-slate-200 dark:hover:bg-white/[0.08]',
 };
 const SIZE = {
-  sm: 'h-8 px-3 text-[13px] lg:h-7 lg:px-2.5 rounded-lg lg:rounded-md',
-  md: 'h-10 px-4 text-[15px] lg:h-8 lg:px-3.5 lg:text-[13px] rounded-xl lg:rounded-lg',
-  lg: 'h-12 px-5 text-[17px] lg:h-10 lg:text-[15px] rounded-xl',
+  sm: 'h-9 px-3 text-sm rounded-lg',
+  md: 'h-10 px-4 text-[15px] rounded-xl',
+  lg: 'h-12 px-5 text-[17px] rounded-xl',
   xl: 'h-14 px-6 text-lg rounded-2xl',
 };
 
@@ -53,7 +53,7 @@ export function Card({ className, children, ...props }) {
 export function Field({ label, hint, children, className }) {
   return (
     <label className={cx('block', className)}>
-      {label && <span className="mb-1.5 block text-[13px] font-medium text-slate-600 dark:text-slate-300">{label}</span>}
+      {label && <span className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-300">{label}</span>}
       {children}
       {hint && <span className="mt-1.5 block text-xs text-slate-500 dark:text-slate-400">{hint}</span>}
     </label>
@@ -63,11 +63,11 @@ export function Field({ label, hint, children, className }) {
 // Inputs are full width unless the caller passes its own width class.
 const withWidth = (className = '') => (/(^|\s)(w-|max-w-|flex-1)/.test(className) ? className : `w-full ${className}`);
 const INPUT =
-  'block rounded-xl border-0 bg-white px-3 py-2.5 text-[16px] text-slate-900 shadow-control outline-none transition-shadow placeholder:text-slate-400 focus:shadow-[0_0_0_1px_theme(colors.indigo.500),0_0_0_4px_rgba(0,122,255,.25)] dark:bg-white/[0.07] dark:text-slate-100 dark:shadow-[inset_0_0_0_0.5px_rgba(255,255,255,.14)] lg:rounded-lg lg:px-2.5 lg:py-1.5 lg:text-[13px]';
+  'block rounded-xl border-0 bg-white px-3 py-2.5 text-[16px] text-slate-900 shadow-control outline-none transition-shadow placeholder:text-slate-400 focus:shadow-[0_0_0_1px_theme(colors.indigo.500),0_0_0_4px_rgba(0,122,255,.25)] dark:bg-white/[0.07] dark:text-slate-100 dark:shadow-[inset_0_0_0_0.5px_rgba(255,255,255,.14)] lg:text-[15px]';
 
-export function Input({ className, ...props }) {
-  return <input className={cx(INPUT, withWidth(className))} {...props} />;
-}
+export const Input = forwardRef(function Input({ className, ...props }, ref) {
+  return <input ref={ref} className={cx(INPUT, withWidth(className))} {...props} />;
+});
 export function Textarea({ className, ...props }) {
   return <textarea className={cx(INPUT, 'leading-relaxed', withWidth(className))} rows={3} {...props} />;
 }
@@ -100,13 +100,13 @@ export function Toggle({ checked, onChange, label, className }) {
       >
         <span className={cx('absolute top-[2px] h-[22px] w-[22px] rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,.2)] transition-transform duration-200 lg:h-[18px] lg:w-[18px]', checked ? 'translate-x-[20px] lg:translate-x-[18px]' : 'translate-x-[2px]')} />
       </button>
-      {label && <span className="text-[15px] lg:text-[13px]">{label}</span>}
+      {label && <span className="text-[15px] lg:text-[15px]">{label}</span>}
     </label>
   );
 }
 
 export function Badge({ className, children }) {
-  return <span className={cx('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold', className)}>{children}</span>;
+  return <span className={cx('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold', className)}>{children}</span>;
 }
 
 export function Avatar({ src, name, size = 'h-8 w-8', className }) {
@@ -120,7 +120,7 @@ export function Avatar({ src, name, size = 'h-8 w-8', className }) {
   return src && !broken ? (
     <img src={src} alt={name || ''} referrerPolicy="no-referrer" onError={() => setBroken(true)} className={cx(size, 'shrink-0 rounded-full object-cover ring-1 ring-black/10 dark:ring-white/10', className)} />
   ) : (
-    <span className={cx(size, 'inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-slate-400 to-slate-500 text-[11px] font-semibold text-white', className)}>
+    <span className={cx(size, 'inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-slate-400 to-slate-500 text-xs font-semibold text-white', className)}>
       {initials}
     </span>
   );
@@ -141,7 +141,7 @@ export function FullPageSpinner({ label = 'Loading…' }) {
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-slate-500">
       <Spinner />
-      <span className="text-[13px]">{label}</span>
+      <span className="text-sm">{label}</span>
     </div>
   );
 }
@@ -194,7 +194,7 @@ export function EmptyState({ icon = 'inbox', title, children }) {
         <Icon name={icon} className="h-8 w-8 text-slate-400" />
       </div>
       <p className="mt-4 text-[17px] font-semibold text-slate-800 dark:text-slate-100 lg:text-[15px]">{title}</p>
-      {children && <div className="mt-1 max-w-sm text-[13px] text-slate-500 dark:text-slate-400">{children}</div>}
+      {children && <div className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{children}</div>}
     </div>
   );
 }
@@ -205,7 +205,7 @@ export function PageHeader({ title, subtitle, actions }) {
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
         <h1 className="text-[32px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[26px]">{title}</h1>
-        {subtitle && <p className="mt-1 text-[13px] text-slate-500 dark:text-slate-400">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -215,7 +215,7 @@ export function PageHeader({ title, subtitle, actions }) {
 /** Segmented control (NSSegmentedControl / UISegmentedControl). */
 export function Segmented({ options, value, onChange, className }) {
   return (
-    <div className={cx('inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[10px] bg-black/[0.06] p-[3px] dark:bg-white/[0.08] lg:rounded-lg lg:p-0.5', className)} role="tablist">
+    <div className={cx('inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[10px] bg-black/[0.06] p-[3px] dark:bg-white/[0.08]', className)} role="tablist">
       {options.map((t) => (
         <button
           key={t.value}
@@ -223,12 +223,12 @@ export function Segmented({ options, value, onChange, className }) {
           aria-selected={value === t.value}
           onClick={() => onChange(t.value)}
           className={cx(
-            'whitespace-nowrap rounded-[8px] px-3 py-1.5 text-[13px] font-medium transition lg:rounded-md lg:px-2.5 lg:py-1 lg:text-xs',
+            'whitespace-nowrap rounded-[8px] px-3.5 py-1.5 text-sm font-medium transition',
             value === t.value ? 'bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,.12),0_0_0_0.5px_rgba(0,0,0,.04)] dark:bg-white/20 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white',
           )}
         >
           {t.label}
-          {t.count != null && t.count > 0 && <span className="ml-1.5 rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">{t.count}</span>}
+          {t.count != null && t.count > 0 && <span className="ml-1.5 rounded-full bg-rose-500 px-1.5 text-xs font-semibold text-white">{t.count}</span>}
         </button>
       ))}
     </div>
@@ -243,7 +243,7 @@ export function Tabs({ tabs, value, onChange }) {
 export function List({ children, className, header, footer }) {
   return (
     <div className={className}>
-      {header && <div className="mb-1.5 px-4 text-[13px] font-medium uppercase tracking-wide text-slate-500 lg:px-1 lg:text-[11px]">{header}</div>}
+      {header && <div className="mb-1.5 px-4 text-sm font-medium uppercase tracking-wide text-slate-500 lg:px-1 lg:text-xs">{header}</div>}
       <div className="divide-y divide-black/[0.06] overflow-hidden rounded-xl bg-white shadow-card ring-1 ring-black/[0.06] dark:divide-white/[0.06] dark:bg-slate-900 dark:ring-white/[0.07]">{children}</div>
       {footer && <div className="mt-1.5 px-4 text-xs text-slate-500 lg:px-1">{footer}</div>}
     </div>
