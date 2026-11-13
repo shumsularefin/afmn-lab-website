@@ -45,7 +45,7 @@ export function DayTimeline({ instruments, day, bookings, activeSessions, daySes
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+    <div className="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-black/[0.06] dark:bg-slate-900 dark:ring-white/[0.07]">
       <div className="min-w-[56rem]">
         {/* hour header */}
         <div className="flex border-b border-slate-200 dark:border-slate-800">
@@ -66,7 +66,7 @@ export function DayTimeline({ instruments, day, bookings, activeSessions, daySes
             </Link>
             <div className={cx('relative flex-1', big ? 'h-16' : 'h-12')}>
               {HOURS.map((h) => (
-                <div key={h} className={cx('absolute inset-y-0 border-l', h % 6 === 0 ? 'border-slate-200 dark:border-slate-700' : 'border-slate-100 dark:border-slate-800/60')} style={{ left: `${(h / 24) * 100}%` }} />
+                <div key={h} className={cx('absolute inset-y-0 border-l', h % 6 === 0 ? 'border-slate-200 dark:border-slate-700' : 'border-black/[0.06] dark:border-white/[0.06]/60')} style={{ left: `${(h / 24) * 100}%` }} />
               ))}
               {blocksFor(inst).map((b) => {
                 const left = pct(b.start);

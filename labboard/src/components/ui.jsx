@@ -1,25 +1,34 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export function cx(...c) {
   return c.filter(Boolean).join(' ');
 }
 
+// macOS push buttons: compact, softly lit, with a 3 px focus halo. Larger tap targets on phones.
 const BTN = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-600 shadow-sm',
-  secondary: 'bg-white text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-700',
-  danger: 'bg-rose-600 text-white hover:bg-rose-500 shadow-sm',
-  success: 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm',
-  warning: 'bg-orange-500 text-white hover:bg-orange-400 shadow-sm',
-  ghost: 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800',
+  primary:
+    'bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-[inset_0_0.5px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,90,200,.35)] hover:from-indigo-400 hover:to-indigo-500 active:from-indigo-600 active:to-indigo-700',
+  secondary:
+    'bg-white text-slate-900 shadow-control hover:bg-slate-50 active:bg-slate-100 dark:bg-white/[0.12] dark:text-white dark:shadow-[inset_0_0.5px_0_rgba(255,255,255,.12)] dark:hover:bg-white/[0.16]',
+  danger: 'bg-gradient-to-b from-rose-400 to-rose-500 text-white shadow-[inset_0_0.5px_0_rgba(255,255,255,.3),0_1px_2px_rgba(200,30,20,.35)] hover:from-rose-400 hover:to-rose-400',
+  success: 'bg-gradient-to-b from-emerald-400 to-emerald-500 text-white shadow-[inset_0_0.5px_0_rgba(255,255,255,.3),0_1px_2px_rgba(30,140,60,.35)] hover:to-emerald-400',
+  warning: 'bg-gradient-to-b from-orange-400 to-orange-500 text-white shadow-[inset_0_0.5px_0_rgba(255,255,255,.3),0_1px_2px_rgba(200,110,0,.35)] hover:to-orange-400',
+  ghost: 'text-indigo-600 hover:bg-black/[0.05] active:bg-black/[0.08] dark:text-indigo-400 dark:hover:bg-white/[0.08]',
+  plain: 'text-slate-700 hover:bg-black/[0.05] active:bg-black/[0.08] dark:text-slate-200 dark:hover:bg-white/[0.08]',
 };
-const SIZE = { sm: 'px-2.5 py-1.5 text-xs', md: 'px-3.5 py-2 text-sm', lg: 'px-5 py-3 text-base', xl: 'px-6 py-4 text-lg' };
+const SIZE = {
+  sm: 'h-8 px-3 text-[13px] lg:h-7 lg:px-2.5 rounded-lg lg:rounded-md',
+  md: 'h-10 px-4 text-[15px] lg:h-8 lg:px-3.5 lg:text-[13px] rounded-xl lg:rounded-lg',
+  lg: 'h-12 px-5 text-[17px] lg:h-10 lg:text-[15px] rounded-xl',
+  xl: 'h-14 px-6 text-lg rounded-2xl',
+};
 
 export function Button({ variant = 'primary', size = 'md', className, loading, children, ...props }) {
   return (
     <button
       type="button"
       className={cx(
-        'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-[background,box-shadow,transform] duration-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-indigo-500/40 disabled:pointer-events-none disabled:opacity-45',
         BTN[variant],
         SIZE[size],
         className,
@@ -35,7 +44,7 @@ export function Button({ variant = 'primary', size = 'md', className, loading, c
 
 export function Card({ className, children, ...props }) {
   return (
-    <div className={cx('rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800', className)} {...props}>
+    <div className={cx('rounded-2xl bg-white shadow-card ring-1 ring-black/[0.06] dark:bg-slate-900 dark:ring-white/[0.07] lg:rounded-xl', className)} {...props}>
       {children}
     </div>
   );
@@ -44,9 +53,9 @@ export function Card({ className, children, ...props }) {
 export function Field({ label, hint, children, className }) {
   return (
     <label className={cx('block', className)}>
-      {label && <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>}
+      {label && <span className="mb-1.5 block text-[13px] font-medium text-slate-600 dark:text-slate-300">{label}</span>}
       {children}
-      {hint && <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{hint}</span>}
+      {hint && <span className="mt-1.5 block text-xs text-slate-500 dark:text-slate-400">{hint}</span>}
     </label>
   );
 }
@@ -54,47 +63,76 @@ export function Field({ label, hint, children, className }) {
 // Inputs are full width unless the caller passes its own width class.
 const withWidth = (className = '') => (/(^|\s)(w-|max-w-|flex-1)/.test(className) ? className : `w-full ${className}`);
 const INPUT =
-  'block rounded-xl border-0 bg-white px-3 py-2.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700 sm:text-sm';
+  'block rounded-xl border-0 bg-white px-3 py-2.5 text-[16px] text-slate-900 shadow-control outline-none transition-shadow placeholder:text-slate-400 focus:shadow-[0_0_0_1px_theme(colors.indigo.500),0_0_0_4px_rgba(0,122,255,.25)] dark:bg-white/[0.07] dark:text-slate-100 dark:shadow-[inset_0_0_0_0.5px_rgba(255,255,255,.14)] lg:rounded-lg lg:px-2.5 lg:py-1.5 lg:text-[13px]';
 
 export function Input({ className, ...props }) {
   return <input className={cx(INPUT, withWidth(className))} {...props} />;
 }
 export function Textarea({ className, ...props }) {
-  return <textarea className={cx(INPUT, withWidth(className))} rows={3} {...props} />;
+  return <textarea className={cx(INPUT, 'leading-relaxed', withWidth(className))} rows={3} {...props} />;
 }
 export function Select({ className, children, ...props }) {
   return (
-    <select className={cx(INPUT, 'pr-8', withWidth(className))} {...props}>
+    <select
+      className={cx(
+        INPUT,
+        'appearance-none bg-[length:16px] bg-[right_0.5rem_center] bg-no-repeat pr-8',
+        "bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2386868b'%3E%3Cpath d='M10 3 6 7.5h8L10 3Zm0 14 4-4.5H6l4 4.5Z'/%3E%3C/svg%3E\")]",
+        withWidth(className),
+      )}
+      {...props}
+    >
       {children}
     </select>
   );
 }
 
+/** iOS-style switch. */
+export function Toggle({ checked, onChange, label, className }) {
+  return (
+    <label className={cx('inline-flex cursor-pointer select-none items-center gap-2.5', className)}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={cx('relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors duration-200 lg:h-[22px] lg:w-[38px]', checked ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-white/20')}
+      >
+        <span className={cx('absolute top-[2px] h-[22px] w-[22px] rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,.2)] transition-transform duration-200 lg:h-[18px] lg:w-[18px]', checked ? 'translate-x-[20px] lg:translate-x-[18px]' : 'translate-x-[2px]')} />
+      </button>
+      {label && <span className="text-[15px] lg:text-[13px]">{label}</span>}
+    </label>
+  );
+}
+
 export function Badge({ className, children }) {
-  return <span className={cx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold', className)}>{children}</span>;
+  return <span className={cx('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold', className)}>{children}</span>;
 }
 
 export function Avatar({ src, name, size = 'h-8 w-8', className }) {
+  const [broken, setBroken] = useState(false);
   const initials = (name || '?')
     .split(/\s+/)
     .map((s) => s[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
-  return src ? (
-    <img src={src} alt={name || ''} referrerPolicy="no-referrer" className={cx(size, 'shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-slate-900', className)} />
+  return src && !broken ? (
+    <img src={src} alt={name || ''} referrerPolicy="no-referrer" onError={() => setBroken(true)} className={cx(size, 'shrink-0 rounded-full object-cover ring-1 ring-black/10 dark:ring-white/10', className)} />
   ) : (
-    <span className={cx(size, 'inline-flex shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200', className)}>
+    <span className={cx(size, 'inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-slate-400 to-slate-500 text-[11px] font-semibold text-white', className)}>
       {initials}
     </span>
   );
 }
 
 export function Spinner({ className = 'h-6 w-6' }) {
+  // macOS-style activity indicator (12 fading spokes)
   return (
-    <svg className={cx('animate-spin', className)} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    <svg className={cx('animate-spin [animation-duration:0.9s] [animation-timing-function:steps(12)]', className)} viewBox="0 0 24 24" aria-hidden="true">
+      {Array.from({ length: 12 }, (_, i) => (
+        <rect key={i} x="11" y="2" width="2" height="6" rx="1" fill="currentColor" opacity={0.15 + (i / 12) * 0.85} transform={`rotate(${i * 30} 12 12)`} />
+      ))}
     </svg>
   );
 }
@@ -103,36 +141,47 @@ export function FullPageSpinner({ label = 'Loading…' }) {
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-slate-500">
       <Spinner />
-      <span className="text-sm">{label}</span>
+      <span className="text-[13px]">{label}</span>
     </div>
   );
 }
 
+/** Sheet: a centered macOS sheet on desktop, an iOS bottom sheet with a grabber on phones. */
 export function Modal({ open, onClose, title, children, footer, wide }) {
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => e.key === 'Escape' && onClose?.();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="absolute inset-0 animate-fade-in bg-black/30 dark:bg-black/50" onClick={onClose} />
       <div
         className={cx(
-          'relative max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl dark:bg-slate-900 sm:rounded-3xl sm:p-6',
-          wide ? 'sm:max-w-2xl' : 'sm:max-w-lg',
+          'relative flex max-h-[92vh] w-full animate-sheet-up flex-col overflow-hidden rounded-t-[22px] bg-white shadow-sheet dark:bg-slate-900 dark:ring-1 dark:ring-white/10 sm:animate-zoom-in sm:rounded-2xl',
+          wide ? 'sm:max-w-3xl' : 'sm:max-w-lg',
         )}
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800" aria-label="Close">
-            <Icon name="x" className="h-5 w-5" />
+        <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-white/20 sm:hidden" aria-hidden="true" />
+        <div className="flex shrink-0 items-center justify-between gap-4 px-5 pb-2 pt-3 sm:pt-4">
+          <h2 className="text-[17px] font-semibold text-slate-900 dark:text-white sm:text-[15px]">{title}</h2>
+          <button onClick={onClose} className="rounded-full bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15" aria-label="Close">
+            <Icon name="x" className="h-4 w-4" strokeWidth={2.2} />
           </button>
         </div>
-        {children}
-        {footer && <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div>}
+        <div className="overflow-y-auto overscroll-contain px-5 pb-5">{children}</div>
+        {footer && (
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-black/[0.06] bg-slate-50/80 px-5 py-3 dark:border-white/[0.06] dark:bg-white/[0.02]" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -140,42 +189,63 @@ export function Modal({ open, onClose, title, children, footer, wide }) {
 
 export function EmptyState({ icon = 'inbox', title, children }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 px-6 py-12 text-center dark:border-slate-800">
-      <Icon name={icon} className="h-10 w-10 text-slate-300 dark:text-slate-600" />
-      <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">{title}</p>
-      {children && <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{children}</div>}
+    <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-b from-slate-100 to-slate-200 shadow-card dark:from-white/10 dark:to-white/5">
+        <Icon name={icon} className="h-8 w-8 text-slate-400" />
+      </div>
+      <p className="mt-4 text-[17px] font-semibold text-slate-800 dark:text-slate-100 lg:text-[15px]">{title}</p>
+      {children && <div className="mt-1 max-w-sm text-[13px] text-slate-500 dark:text-slate-400">{children}</div>}
     </div>
   );
 }
 
+/** Large title (iOS) that reads as a window section title on desktop. */
 export function PageHeader({ title, subtitle, actions }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
+      <div className="min-w-0">
+        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[26px]">{title}</h1>
+        {subtitle && <p className="mt-1 text-[13px] text-slate-500 dark:text-slate-400">{subtitle}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Segmented control (NSSegmentedControl / UISegmentedControl). */
+export function Segmented({ options, value, onChange, className }) {
+  return (
+    <div className={cx('inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[10px] bg-black/[0.06] p-[3px] dark:bg-white/[0.08] lg:rounded-lg lg:p-0.5', className)} role="tablist">
+      {options.map((t) => (
+        <button
+          key={t.value}
+          role="tab"
+          aria-selected={value === t.value}
+          onClick={() => onChange(t.value)}
+          className={cx(
+            'whitespace-nowrap rounded-[8px] px-3 py-1.5 text-[13px] font-medium transition lg:rounded-md lg:px-2.5 lg:py-1 lg:text-xs',
+            value === t.value ? 'bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,.12),0_0_0_0.5px_rgba(0,0,0,.04)] dark:bg-white/20 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white',
+          )}
+        >
+          {t.label}
+          {t.count != null && t.count > 0 && <span className="ml-1.5 rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">{t.count}</span>}
+        </button>
+      ))}
     </div>
   );
 }
 
 export function Tabs({ tabs, value, onChange }) {
+  return <Segmented options={tabs} value={value} onChange={onChange} className="mb-5 flex w-full sm:inline-flex sm:w-auto" />;
+}
+
+/** Inset grouped list (iOS Settings / macOS System Settings). */
+export function List({ children, className, header, footer }) {
   return (
-    <div className="mb-5 flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
-      {tabs.map((t) => (
-        <button
-          key={t.value}
-          onClick={() => onChange(t.value)}
-          className={cx(
-            'whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition',
-            value === t.value ? 'bg-white text-slate-900 shadow dark:bg-slate-900 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
-          )}
-        >
-          {t.label}
-          {t.count != null && t.count > 0 && <span className="ml-1.5 rounded-full bg-rose-500 px-1.5 text-xs text-white">{t.count}</span>}
-        </button>
-      ))}
+    <div className={className}>
+      {header && <div className="mb-1.5 px-4 text-[13px] font-medium uppercase tracking-wide text-slate-500 lg:px-1 lg:text-[11px]">{header}</div>}
+      <div className="divide-y divide-black/[0.06] overflow-hidden rounded-xl bg-white shadow-card ring-1 ring-black/[0.06] dark:divide-white/[0.06] dark:bg-slate-900 dark:ring-white/[0.07]">{children}</div>
+      {footer && <div className="mt-1.5 px-4 text-xs text-slate-500 lg:px-1">{footer}</div>}
     </div>
   );
 }
@@ -213,12 +283,20 @@ const PATHS = {
   stop: 'M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z',
   menu: 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5',
   expand: 'M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15',
+  photo: 'm2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z',
+  photos: 'M2.25 15.75l5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V8.25A2.25 2.25 0 0 0 20.25 6H3.75A2.25 2.25 0 0 0 1.5 8.25v10.5A2.25 2.25 0 0 0 3.75 21Z M6 3h12',
+  camera: 'M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z',
+  upload: 'M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5',
+  sidebar: 'M3.75 5.25h16.5a.75.75 0 0 1 .75.75v12a.75.75 0 0 1-.75.75H3.75a.75.75 0 0 1-.75-.75V6a.75.75 0 0 1 .75-.75Z M9 5.25v13.5',
+  more: 'M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z',
+  chevron: 'm8.25 4.5 7.5 7.5-7.5 7.5',
+  grid: 'M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6Z M3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25Z M13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6Z M13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z',
   link: 'M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244',
 };
 
-export function Icon({ name, className = 'h-5 w-5' }) {
+export function Icon({ name, className = 'h-5 w-5', strokeWidth = 1.7 }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={strokeWidth} stroke="currentColor" aria-hidden="true">
       {PATHS[name]?.split(' M').map((d, i) => <path key={i} strokeLinecap="round" strokeLinejoin="round" d={i ? 'M' + d : d} />)}
     </svg>
   );

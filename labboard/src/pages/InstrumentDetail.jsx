@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { collection, limit, orderBy, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -11,10 +12,12 @@ import { fmtDate, fmtDateTime, fmtTime, toDate } from '../lib/time';
 import { Badge, Card, EmptyState, Icon } from '../components/ui';
 import { InstrumentCard } from '../components/InstrumentCard';
 import { IssueButton } from '../components/IssueButton';
+import { LabImage, Lightbox, PhotoStrip } from '../components/images';
 import { maintenanceState } from './Maintenance';
 
 export default function InstrumentDetail() {
   const { id } = useParams();
+  const [zoom, setZoom] = useState(null);
   const { profile, isAdmin } = useAuth();
   const { instrumentsById, sessionsByInstrument, bookings, maintenance, openIssues } = useData();
   const { finish, extend } = useSessionActions();
@@ -37,11 +40,14 @@ export default function InstrumentDetail() {
     <div className="space-y-5">
       <div className="grid gap-5 lg:grid-cols-[2fr,3fr]">
         <Card className="overflow-hidden">
-          {inst.photoURL ? (
-            <img src={inst.photoURL} alt={inst.name} className="aspect-video w-full object-cover" />
-          ) : (
-            <div className="flex aspect-video items-center justify-center bg-slate-100 text-slate-300 dark:bg-slate-800"><Icon name="wrench" className="h-16 w-16" /></div>
-          )}
+          <LabImage
+            value={inst.photoURL}
+            alt={inst.name}
+            className="aspect-video w-full cursor-zoom-in"
+            onClick={() => setZoom(inst.photoURL)}
+            fallback={<div className="flex aspect-video items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-300 dark:from-white/[0.08] dark:to-white/[0.02] dark:text-slate-600"><Icon name="photo" className="h-14 w-14" /></div>}
+          />
+          <Lightbox value={zoom} onClose={() => setZoom(null)} />
           <div className="space-y-3 p-5">
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{inst.name}</h1>
@@ -59,21 +65,21 @@ export default function InstrumentDetail() {
               <Row icon="shield" label="Training">
                 {inst.requiredTraining || 'None'}
                 {inst.restricted && (
-                  <Badge className={trained ? 'ml-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'ml-2 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'}>
+                  <Badge className={trained ? 'ml-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'ml-2 bg-orange-500/10 text-orange-700 dark:text-orange-300'}>
                     {trained ? '✓ You are approved' : 'Approval needed'}
                   </Badge>
                 )}
               </Row>
             </dl>
             {inst.safetyNotes && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+              <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-300/60 dark:bg-amber-500/10 dark:text-amber-100 dark:ring-amber-500/30">
                 <div className="mb-1 font-bold">⚠ Safety notes</div>
                 <p className="whitespace-pre-line">{inst.safetyNotes}</p>
               </div>
             )}
             <div className="flex gap-2">
               <IssueButton instrument={inst} />
-              {isAdmin && <Link to={`/admin?edit=${inst.id}`} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700"><Icon name="edit" className="h-4 w-4" /> Edit</Link>}
+              {isAdmin && <Link to={`/admin?edit=${inst.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-slate-100 px-4 text-[13px] font-semibold text-indigo-600 hover:bg-slate-200/70 dark:bg-white/[0.08] dark:text-indigo-400 lg:h-8"><Icon name="edit" className="h-4 w-4" /> Edit</Link>}
             </div>
           </div>
         </Card>
@@ -86,8 +92,9 @@ export default function InstrumentDetail() {
               <h2 className="mb-2 font-semibold text-slate-900 dark:text-white">Open issues</h2>
               <ul className="space-y-2 text-sm">
                 {issues.map((i) => (
-                  <li key={i.id} className="rounded-lg bg-amber-50 p-2 dark:bg-amber-950/50">
+                  <li key={i.id} className="rounded-lg bg-amber-50 p-2.5 dark:bg-amber-500/10">
                     <b className="capitalize">{i.severity}</b>: {i.description}
+                    {i.photos?.length > 0 && <div className="mt-2"><PhotoStrip photos={i.photos} size="h-14 w-14" /></div>}
                     <div className="text-xs text-slate-500">{i.reportedByName} · {fmtDateTime(i.createdAt)}</div>
                   </li>
                 ))}

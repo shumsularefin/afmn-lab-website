@@ -113,7 +113,7 @@ export default function Bookings() {
               const blocks = forInst.filter((b) => toDate(b.end).getTime() > dayStart && toDate(b.start).getTime() < dayEnd);
               const sess = session && toDate(session.expectedEnd).getTime() > dayStart && (toDate(session.startedAt)?.getTime() ?? now.getTime()) < dayEnd ? session : null;
               return (
-                <div key={d.toISOString()} className="relative border-l border-slate-100 dark:border-slate-800">
+                <div key={d.toISOString()} className="relative border-l border-black/[0.06] dark:border-white/[0.06]">
                   {hours.map((h) => {
                     const slot = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h);
                     const past = slot.getTime() + HOUR <= now.getTime();
@@ -163,7 +163,7 @@ export default function Bookings() {
         {!myUpcoming.length ? (
           <p className="text-sm text-slate-500">Nothing booked.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
             {myUpcoming.map((b) => (
               <li key={b.id} className="flex items-center gap-3 py-2">
                 <Avatar src={b.userPhoto} name={b.userName} size="h-8 w-8" />
@@ -218,7 +218,7 @@ export default function Bookings() {
                   onClick={() => setDraft((x) => ({ ...x, end: new Date(x.start.getTime() + h * HOUR) }))}
                   className={cx(
                     'rounded-lg px-3 py-1.5 text-sm font-semibold ring-1 ring-inset',
-                    draft.end - draft.start === h * HOUR ? 'bg-indigo-600 text-white ring-indigo-600' : 'ring-slate-300 dark:ring-slate-700',
+                    draft.end - draft.start === h * HOUR ? 'bg-indigo-600 text-white ring-indigo-600' : 'ring-black/10 dark:ring-white/10',
                   )}
                 >
                   {h < 1 ? '30m' : `${h}h`}

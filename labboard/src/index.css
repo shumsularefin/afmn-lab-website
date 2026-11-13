@@ -5,9 +5,20 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    font-feature-settings: 'cv11', 'ss01';
   }
   body {
-    @apply text-slate-900 antialiased dark:text-slate-100;
+    @apply bg-slate-50 text-[15px] leading-snug text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100 lg:text-sm;
+    letter-spacing: -0.01em;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+  }
+  ::selection {
+    @apply bg-indigo-500/25;
   }
   input[type='datetime-local'],
   input[type='date'] {
@@ -17,5 +28,56 @@
   .dark input[type='date'],
   .dark select {
     color-scheme: dark;
+  }
+  /* Thin overlay scrollbars like macOS */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+  }
+  .dark * {
+    scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  }
+}
+
+@layer components {
+  /* Desktop wallpaper behind the window (Sonoma-like soft gradient) */
+  .wallpaper {
+    background:
+      radial-gradient(1200px 700px at 15% 10%, #9fc6ff 0%, transparent 60%),
+      radial-gradient(1000px 800px at 85% 20%, #f7b5e0 0%, transparent 55%),
+      radial-gradient(1200px 900px at 50% 110%, #ffd59f 0%, transparent 60%),
+      linear-gradient(160deg, #c9d8ff, #f1d5f0 55%, #ffe3c4);
+  }
+  .dark .wallpaper {
+    background:
+      radial-gradient(1200px 700px at 15% 10%, #1b3a78 0%, transparent 60%),
+      radial-gradient(1000px 800px at 85% 20%, #5a1f55 0%, transparent 55%),
+      radial-gradient(1200px 900px at 50% 110%, #5b3410 0%, transparent 60%),
+      linear-gradient(160deg, #0b1430, #1d0e24 55%, #24140a);
+  }
+  /* Translucent "vibrancy" material for sidebars, toolbars and tab bars */
+  .vibrancy {
+    @apply bg-white/70 backdrop-blur-2xl backdrop-saturate-150 dark:bg-[#232326]/70;
+  }
+  .vibrancy-strong {
+    @apply bg-white/85 backdrop-blur-2xl backdrop-saturate-150 dark:bg-[#1c1c1e]/85;
+  }
+  .hairline {
+    @apply border-black/[0.08] dark:border-white/[0.08];
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

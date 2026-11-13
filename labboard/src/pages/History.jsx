@@ -84,7 +84,7 @@ export default function History() {
           <div className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800">
             {rows.length} sessions · {rows.reduce((h, s) => h + sessionHours(s), 0).toFixed(1)} h total
           </div>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
             {rows.map((s) => (
               <li key={s.id} className="flex gap-3 px-4 py-3">
                 <Avatar src={s.userPhoto} name={s.userName} size="h-9 w-9" />

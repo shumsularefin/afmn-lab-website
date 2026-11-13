@@ -10,7 +10,7 @@ rules_version = '2';
 //   removals/{key}         private  ties each deletion to its log entry
 //
 // LabBoard (instrument board at /update, source in labboard/) shares this project. Its collections are
-// users, allowlist, instruments, sessions, bookings, templates, issues, maintenance; see the LabBoard section
+// users, allowlist, instruments, sessions, bookings, templates, issues, maintenance, labImages; see the LabBoard section
 // at the end of this file. The two apps use different collections and never touch each other's documents.
 //
 // Only Google sign-in counts. Every write carries an auditId; the rules check that the log entry is
@@ -324,13 +324,34 @@ service cloud.firestore {
         && request.resource.data.reportedBy == request.auth.uid
         && request.resource.data.status == 'open'
         && request.resource.data.description is string
-        && request.resource.data.description.size() <= 2000;
+        && request.resource.data.description.size() <= 2000
+        && (!('photos' in request.resource.data)
+            || (request.resource.data.photos is list && request.resource.data.photos.size() <= 4));
       allow update, delete: if lbAdmin();
     }
 
     match /maintenance/{id} {
       allow read: if lbApproved();
       allow write: if lbAdmin();
+    }
+
+    // Uploaded photos (instrument pictures, issue photos). Spark has no Cloud Storage, so the browser
+    // shrinks each image to a JPEG of at most ~280 KB and stores it here as a data URL; content refers to
+    // it as lbimg:<id>. Images never change; the uploader or an admin deletes them.
+    match /labImages/{id} {
+      allow read: if lbApproved();
+      allow create: if lbApproved()
+        && request.resource.data.keys().hasOnly(['image', 'name', 'kind', 'createdBy', 'createdByName', 'createdAt'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.kind in ['instrument', 'issue', 'other']
+        && request.resource.data.name is string && request.resource.data.name.size() <= 150
+        && request.resource.data.image is string && request.resource.data.image.size() <= 280000
+        && request.resource.data.image.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+        // Instrument photos are an admin job; anyone approved may attach photos to an issue report.
+        && (request.resource.data.kind != 'instrument' || lbAdmin());
+      allow delete: if lbAdmin() || (lbApproved() && resource.data.createdBy == request.auth.uid);
+      allow update: if false;
     }
 
 

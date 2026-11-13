@@ -15,10 +15,11 @@ import { seedSampleData } from '../lib/seed';
 import { downloadCSV } from '../lib/csv';
 import { DEFAULT_MAX_BOOKING_HOURS } from '../lib/status';
 import { fmtDateTime, fmtDuration, toDate } from '../lib/time';
-import { Avatar, Badge, Button, Card, EmptyState, Field, Icon, Input, Modal, PageHeader, Select, Tabs, Textarea, cx } from '../components/ui';
+import { Avatar, Badge, Button, Card, EmptyState, Field, Icon, Input, Modal, PageHeader, Select, Segmented, Tabs, Textarea, cx } from '../components/ui';
+import { ImageField, ImageLibrary, LabImage, PhotoStrip } from '../components/images';
 
 export default function Admin() {
-  const { openIssues } = useData();
+  const { openIssues, instruments } = useData();
   const [params, setParams] = useSearchParams();
   const [tab, setTab] = useState(params.get('edit') ? 'instruments' : 'instruments');
   const users = useLiveQuery(() => collection(db, 'users'), []);
@@ -36,6 +37,7 @@ export default function Admin() {
           { value: 'allow', label: 'Approved list' },
           { value: 'issues', label: 'Issues', count: openIssues.length },
           { value: 'sessions', label: 'Active sessions' },
+          { value: 'photos', label: 'Photos' },
           { value: 'data', label: 'Data' },
         ]}
       />
@@ -44,6 +46,7 @@ export default function Admin() {
       {tab === 'allow' && <AllowlistTab />}
       {tab === 'issues' && <IssuesTab />}
       {tab === 'sessions' && <SessionsTab />}
+      {tab === 'photos' && <PhotosTab instruments={instruments} />}
       {tab === 'data' && <DataTab users={users.data} />}
     </div>
   );
@@ -97,10 +100,10 @@ function InstrumentsTab({ editId, clearEdit }) {
       {!instruments.length ? (
         <EmptyState title="No instruments">Add one, or load sample data from the Data tab.</EmptyState>
       ) : (
-        <Card className="divide-y divide-slate-100 dark:divide-slate-800">
+        <Card className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
           {instruments.map((i) => (
             <div key={i.id} className="flex flex-wrap items-center gap-3 p-3">
-              {i.photoURL ? <img src={i.photoURL} alt="" className="h-12 w-16 rounded-lg object-cover" /> : <div className="h-12 w-16 rounded-lg bg-slate-100 dark:bg-slate-800" />}
+              <LabImage value={i.photoURL} alt="" className="h-12 w-16 rounded-lg ring-1 ring-black/5 dark:ring-white/10" fallback={<div className="h-12 w-16 rounded-lg bg-slate-100 dark:bg-white/[0.08]" />} />
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-slate-900 dark:text-white">
                   {i.name} {i.restricted && <span title="Training required">🎓</span>}
@@ -142,8 +145,8 @@ function InstrumentsTab({ editId, clearEdit }) {
             <Field label="Type" hint="Used for filtering, e.g. Microscopy"><Input value={form.type} onChange={set('type')} list="types" /></Field>
             <Field label="Room"><Input value={form.room} onChange={set('room')} list="rooms" /></Field>
             <Field label="Exact location" className="sm:col-span-2"><Input value={form.location} onChange={set('location')} /></Field>
-            <Field label="Photo URL" hint="Paste an image link (Cloud Storage needs the Blaze plan for new projects)."><Input value={form.photoURL} onChange={set('photoURL')} /></Field>
-            <Field label="Manual URL"><Input value={form.manualURL} onChange={set('manualURL')} /></Field>
+            <div className="sm:col-span-2"><ImageField value={form.photoURL} onChange={(v) => setForm((f) => ({ ...f, photoURL: v }))} label="Photo" /></div>
+            <Field label="Manual URL" className="sm:col-span-2"><Input value={form.manualURL} onChange={set('manualURL')} placeholder="https://…" /></Field>
             <Field label="Description" className="sm:col-span-2"><Textarea value={form.description} onChange={set('description')} rows={2} /></Field>
             <Field label="Safety notes" className="sm:col-span-2"><Textarea value={form.safetyNotes} onChange={set('safetyNotes')} rows={2} /></Field>
             <Field label="Required training"><Input value={form.requiredTraining} onChange={set('requiredTraining')} /></Field>
@@ -200,7 +203,7 @@ function UsersTab({ users }) {
   return (
     <>
       <Input type="search" placeholder="Search people…" value={q} onChange={(e) => setQ(e.target.value)} className="mb-3 max-w-sm" />
-      <Card className="divide-y divide-slate-100 dark:divide-slate-800">
+      <Card className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
         {list.map((u) => (
           <div key={u.id} className={cx('flex flex-wrap items-center gap-3 p-3', !u.approved && 'bg-amber-50/60 dark:bg-amber-950/30')}>
             <Avatar src={u.photoURL} name={u.name} size="h-10 w-10" />
@@ -246,7 +249,7 @@ function UsersTab({ users }) {
               const live = users.find((u) => u.id === training.id) || training;
               const on = (live.trainedOn || []).includes(i.id);
               return (
-                <label key={i.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-slate-50 dark:hover:bg-slate-800">
+                <label key={i.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-slate-50 dark:hover:bg-white/[0.06]">
                   <input
                     type="checkbox"
                     className="h-5 w-5 rounded"
@@ -306,13 +309,13 @@ function AllowlistTab() {
           <Button onClick={add}>Add</Button>
         </div>
       </Card>
-      <Card className="divide-y divide-slate-100 dark:divide-slate-800">
+      <Card className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
         {!list.data.length && <p className="p-4 text-sm text-slate-500">Empty.</p>}
         {list.data.map((a) => (
           <div key={a.id} className="flex items-center justify-between gap-2 p-3 text-sm">
             <span className="truncate">{a.id}</span>
             <span className="flex items-center gap-2">
-              <Badge className="bg-slate-100 capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-300">{a.role}</Badge>
+              <Badge className="bg-slate-100 capitalize text-slate-700 dark:bg-white/[0.08] dark:text-slate-300">{a.role}</Badge>
               <button className="text-slate-400 hover:text-rose-600" onClick={() => removeFromAllowlist(a.id).catch(toast.error)} aria-label="Remove"><Icon name="trash" className="h-4 w-4" /></button>
             </span>
           </div>
@@ -330,14 +333,12 @@ function IssuesTab() {
   const all = useLiveQuery(() => query(collection(db, 'issues'), orderBy('createdAt', 'desc'), limit(200)), []);
   const [show, setShow] = useState('open');
   const rows = all.data.filter((i) => show === 'all' || i.status === show);
-  const sev = { critical: 'bg-rose-600 text-white', major: 'bg-orange-100 text-orange-800', minor: 'bg-slate-100 text-slate-700' };
+  const sev = { critical: 'bg-rose-500 text-white', major: 'bg-orange-500/15 text-orange-700 dark:text-orange-300', minor: 'bg-black/[0.06] text-slate-700 dark:bg-white/10 dark:text-slate-300' };
 
   return (
     <>
-      <div className="mb-3 flex gap-2">
-        {['open', 'resolved', 'all'].map((s) => (
-          <Button key={s} size="sm" variant={show === s ? 'primary' : 'secondary'} onClick={() => setShow(s)} className="capitalize">{s}</Button>
-        ))}
+      <div className="mb-3 flex items-center gap-2">
+        <Segmented value={show} onChange={setShow} options={[{ value: 'open', label: 'Open' }, { value: 'resolved', label: 'Resolved' }, { value: 'all', label: 'All' }]} />
         <Button
           size="sm"
           variant="ghost"
@@ -361,13 +362,14 @@ function IssuesTab() {
       {!rows.length ? (
         <EmptyState icon="check" title="No issues here" />
       ) : (
-        <Card className="divide-y divide-slate-100 dark:divide-slate-800">
+        <Card className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
           {rows.map((i) => (
             <div key={i.id} className="flex flex-wrap items-start gap-3 p-4">
               <Badge className={cx('capitalize', sev[i.severity] || sev.minor)}>{i.severity}</Badge>
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-slate-900 dark:text-white">{i.instrumentName}</div>
                 <p className="whitespace-pre-line text-sm text-slate-700 dark:text-slate-300">{i.description}</p>
+                {i.photos?.length > 0 && <div className="my-2"><PhotoStrip photos={i.photos} /></div>}
                 <div className="text-xs text-slate-500">
                   {i.reportedByName} · {fmtDateTime(i.createdAt)}
                   {i.status === 'resolved' && <> · resolved by {i.resolvedBy} {i.resolution && `– ${i.resolution}`}</>}
@@ -393,6 +395,18 @@ function IssuesTab() {
   );
 }
 
+// ── Photos (uploaded images, usage and cleanup) ──────────────────────────────
+
+function PhotosTab({ instruments }) {
+  const all = useLiveQuery(() => query(collection(db, 'issues'), orderBy('createdAt', 'desc'), limit(500)), []);
+  if (all.loading) return null;
+  return (
+    <Card className="p-4 sm:p-5">
+      <ImageLibrary instruments={instruments} issues={all.data} />
+    </Card>
+  );
+}
+
 // ── Active sessions (force-finish stale ones) ────────────────────────────────
 
 function SessionsTab() {
@@ -401,7 +415,7 @@ function SessionsTab() {
   const now = new Date();
   if (!activeSessions.length) return <EmptyState icon="check" title="No active sessions" />;
   return (
-    <Card className="divide-y divide-slate-100 dark:divide-slate-800">
+    <Card className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
       {[...activeSessions].sort((a, b) => toDate(a.expectedEnd) - toDate(b.expectedEnd)).map((s) => {
         const over = toDate(s.expectedEnd) < now;
         return (

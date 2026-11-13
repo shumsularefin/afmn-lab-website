@@ -12,7 +12,7 @@ export function ThemeProvider({ children }) {
     } catch {
       /* ignore */
     }
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#020617' : '#4f46e5');
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#161618' : '#f5f5f7'));
   }, [dark]);
   return <ThemeCtx.Provider value={{ dark, toggle: () => setDark((d) => !d) }}>{children}</ThemeCtx.Provider>;
 }

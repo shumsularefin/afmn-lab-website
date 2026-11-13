@@ -31,7 +31,7 @@ function Bars({ title, rows, unit = 'h', color = 'bg-indigo-500' }) {
                   {r.extra && <span className="ml-1 font-sans font-normal text-slate-400">{r.extra}</span>}
                 </span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.08]">
                 <div className={`h-full rounded-full ${color}`} style={{ width: `${(r.value / max) * 100}%` }} />
               </div>
             </li>
@@ -121,7 +121,7 @@ export default function Stats() {
               ['Idle capacity', `${Math.max(0, Math.round(idle * 100))}%`],
             ].map(([l, v]) => (
               <Card key={l} className="p-4">
-                <div className="text-3xl font-extrabold text-slate-900 dark:text-white">{v}</div>
+                <div className="text-3xl font-bold text-slate-900 dark:text-white">{v}</div>
                 <div className="text-xs font-medium text-slate-500">{l}</div>
               </Card>
             ))}

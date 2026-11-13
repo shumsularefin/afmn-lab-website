@@ -299,7 +299,7 @@ export function deleteTemplate(id) {
 
 // ── Issues ───────────────────────────────────────────────────────────────────
 
-export function reportIssue({ instrument, profile, description, severity }) {
+export function reportIssue({ instrument, profile, description, severity, photos = [] }) {
   return addDoc(collection(db, 'issues'), {
     instrumentId: instrument.id,
     instrumentName: instrument.name,
@@ -307,6 +307,7 @@ export function reportIssue({ instrument, profile, description, severity }) {
     reportedByName: profile.name,
     description: String(description).trim().slice(0, 2000),
     severity: severity || 'minor',
+    photos: photos.filter((p) => typeof p === 'string').slice(0, 4),
     status: 'open',
     createdAt: serverTimestamp(),
   });

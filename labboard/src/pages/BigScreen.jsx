@@ -51,25 +51,25 @@ export default function BigScreen() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
       <div className="mb-5 flex items-center gap-4">
         <img src={asset('icons/icon.svg')} alt="" className="h-12 w-12" />
-        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">LabBoard</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">LabBoard</h1>
         <div className="ml-auto text-right">
           <div className="font-mono text-5xl font-bold tabular-nums text-slate-900 dark:text-white">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           <div className="text-lg text-slate-500">{now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</div>
         </div>
         <div className="flex flex-col gap-1">
-          <button onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())} className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" title="Full screen">
+          <button onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())} className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-white/[0.06]" title="Full screen">
             <Icon name="expand" className="h-6 w-6" />
           </button>
-          <button onClick={toggle} className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" title="Toggle dark mode">
+          <button onClick={toggle} className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-white/[0.06]" title="Toggle dark mode">
             <Icon name={dark ? 'sun' : 'moon'} className="h-6 w-6" />
           </button>
-          <button onClick={() => { setAuto(false); setView((v) => (v === 'cards' ? 'timeline' : 'cards')); }} className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" title="Switch view">
+          <button onClick={() => { setAuto(false); setView((v) => (v === 'cards' ? 'timeline' : 'cards')); }} className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-white/[0.06]" title="Switch view">
             <Icon name="timeline" className="h-6 w-6" />
           </button>
-          <Link to="/" className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" title="Exit big-screen mode"><Icon name="x" className="h-6 w-6" /></Link>
+          <Link to="/" className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-white/[0.06]" title="Exit big-screen mode"><Icon name="x" className="h-6 w-6" /></Link>
         </div>
       </div>
 
