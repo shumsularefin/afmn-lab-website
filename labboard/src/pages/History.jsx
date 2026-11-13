@@ -103,7 +103,7 @@ export default function History() {
                   {s.params?.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {s.params.map((p, i) => (
-                        <span key={i} className="rounded bg-red-50 px-1.5 py-0.5 font-mono text-[11px] text-red-800 dark:bg-red-950 dark:text-red-200">{p.key}: {p.value}</span>
+                        <span key={i} className="rounded bg-red-50 px-1.5 py-0.5 font-mono text-xs text-red-800 dark:bg-red-950 dark:text-red-200">{p.key}: {p.value}</span>
                       ))}
                     </div>
                   )}

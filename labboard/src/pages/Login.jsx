@@ -6,15 +6,15 @@ import { friendlyError } from '../contexts/ToastContext';
 export default function Login() {
   const { signIn, devSignIn, error } = useAuth();
   return (
-    <div className="wallpaper relative flex min-h-[100dvh] flex-col items-center justify-center px-5 py-10">
+    <div className="bg-slate-50 dark:bg-slate-950 relative flex min-h-[100dvh] flex-col items-center justify-center px-5 py-10">
       <div className="w-full max-w-[380px] animate-zoom-in">
-        <div className="vibrancy rounded-[28px] p-8 text-center shadow-window ring-1 ring-white/40 dark:shadow-window-dark dark:ring-white/10">
+        <div className="rounded-3xl bg-white p-8 text-center shadow-card ring-1 ring-black/[0.06] dark:bg-[#1c1c1e] dark:ring-white/10">
           <img src={asset('icons/icon.svg')} alt="" className="mx-auto h-20 w-20 drop-shadow-[0_8px_16px_rgba(0,0,0,.25)]" />
           <h1 className="mt-5 text-[28px] font-bold tracking-tight text-slate-900 dark:text-white">LabBoard</h1>
-          <p className="mt-1 text-[13px] font-medium text-slate-500 dark:text-slate-400">AFMN Lab · instrument board</p>
-          <p className="mt-4 text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 lg:text-[13px]">See what's free, start a session in 20 seconds, and never guess who's using the instrument.</p>
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">AFMN Lab · instrument board</p>
+          <p className="mt-4 text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 lg:text-[15px]">See what's free, start a session in 20 seconds, and never guess who's using the instrument.</p>
           {!firebaseConfigured ? (
-            <div className="mt-6 rounded-xl bg-amber-50 p-4 text-left text-[13px] text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
+            <div className="mt-6 rounded-xl bg-amber-50 p-4 text-left text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
               Firebase is not configured. Copy <code>.env.example</code> to <code>.env.local</code>, fill in your web-app config and restart <code>npm run dev</code>.
             </div>
           ) : (
@@ -32,7 +32,7 @@ export default function Login() {
             </button>
           )}
           {USE_EMULATORS && <DevLogin onLogin={devSignIn} />}
-          {error && <p className="mt-4 text-[13px] text-rose-600">{friendlyError(error)}</p>}
+          {error && <p className="mt-4 text-sm text-rose-600">{friendlyError(error)}</p>}
         </div>
         <p className="mt-5 text-center text-xs font-medium text-slate-700/80 dark:text-white/60">
           Only approved lab members can enter{ALLOWED_DOMAIN ? <> (or anyone with an @{ALLOWED_DOMAIN} account)</> : null}.

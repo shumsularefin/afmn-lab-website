@@ -79,13 +79,13 @@ export default function InstrumentDetail() {
             )}
             <div className="flex gap-2">
               <IssueButton instrument={inst} />
-              {isAdmin && <Link to={`/admin?edit=${inst.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-slate-100 px-4 text-[13px] font-semibold text-indigo-600 hover:bg-slate-200/70 dark:bg-white/[0.08] dark:text-indigo-400 lg:h-8"><Icon name="edit" className="h-4 w-4" /> Edit</Link>}
+              {isAdmin && <Link to={`/admin?edit=${inst.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-slate-100 px-4 text-sm font-semibold text-indigo-600 hover:bg-slate-200/70 dark:bg-white/[0.08] dark:text-indigo-400"><Icon name="edit" className="h-4 w-4" /> Edit</Link>}
             </div>
           </div>
         </Card>
 
         <div className="space-y-5">
-          <InstrumentCard inst={inst} d={d} now={now} myUid={profile.uid} openIssueCount={issues.length} onFinish={finish} onExtend={(s) => extend(s, 3600e3)} />
+          <InstrumentCard showStatus inst={inst} d={d} now={now} myUid={profile.uid} openIssueCount={issues.length} onFinish={finish} onExtend={(s) => extend(s, 3600e3)} />
 
           {issues.length > 0 && (
             <Card className="p-5">

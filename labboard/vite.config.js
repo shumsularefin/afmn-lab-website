@@ -14,5 +14,15 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2022', // top-level await in src/lib/firebase.js
     chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        // Libraries change rarely, so they get their own long-cached files; an app update then only
+        // re-downloads LabBoard's own (small) code.
+        manualChunks(id) {
+          if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) return 'firebase';
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return 'react';
+        },
+      },
+    },
   },
 });

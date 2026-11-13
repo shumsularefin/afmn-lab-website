@@ -49,7 +49,7 @@ export function Lightbox({ value, onClose }) {
   }, [value, onClose]);
   if (!value) return null;
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-xl animate-fade-in" onClick={onClose} role="dialog" aria-label="Photo">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 animate-fade-in" onClick={onClose} role="dialog" aria-label="Photo">
       {src ? <img src={src} alt="" className="max-h-full max-w-full rounded-xl shadow-2xl animate-zoom-in" /> : <Spinner className="h-8 w-8 text-white" />}
       <button onClick={onClose} className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white backdrop-blur hover:bg-white/25" style={{ marginTop: 'env(safe-area-inset-top)' }} aria-label="Close">
         <Icon name="x" className="h-5 w-5" />
@@ -104,7 +104,7 @@ export function ImageField({ value, onChange, kind = 'instrument', label = 'Phot
   const { inputs, dropProps, dragging, browse, snap } = useFilePick(upload);
   return (
     <div>
-      <span className="mb-1.5 block text-[13px] font-medium text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-300">{label}</span>
       <div
         {...dropProps}
         tabIndex={0}
@@ -118,8 +118,8 @@ export function ImageField({ value, onChange, kind = 'instrument', label = 'Phot
         ) : (
           <div className="flex flex-col items-center gap-1 px-4 text-center text-slate-500">
             <Icon name="photo" className="h-8 w-8 text-slate-400" />
-            <span className="text-[13px] font-medium">Drop a photo here, paste, or browse</span>
-            <span className="text-[11px] text-slate-400">Resized and compressed in your browser · no Cloud Storage needed</span>
+            <span className="text-sm font-medium">Drop a photo here, paste, or browse</span>
+            <span className="text-xs text-slate-400">Resized and compressed in your browser · no Cloud Storage needed</span>
           </div>
         )}
         {busy && (
@@ -179,11 +179,11 @@ export function PhotoAttachments({ value = [], onChange, max = 4, kind = 'issue'
         ))}
         {value.length + busy < max && (
           <>
-            <button type="button" onClick={browse} className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-[11px] font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 dark:border-white/15">
+            <button type="button" onClick={browse} className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 dark:border-white/15">
               <Icon name="photo" className="h-5 w-5" /> Add photo
             </button>
             {isTouch() && (
-              <button type="button" onClick={snap} className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-[11px] font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 dark:border-white/15">
+              <button type="button" onClick={snap} className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-indigo-400 hover:text-indigo-600 dark:border-white/15">
                 <Icon name="camera" className="h-5 w-5" /> Camera
               </button>
             )}
@@ -310,7 +310,7 @@ export function ImageLibrary({ onPick, instruments = null, issues = null }) {
                     </button>
                   )}
                 </div>
-                <figcaption className="mt-1 truncate text-[11px] text-slate-500" title={`${img.name} · ${img.createdByName} · ${fmtDateTime(img.createdAt)}`}>
+                <figcaption className="mt-1 truncate text-xs text-slate-500" title={`${img.name} · ${img.createdByName} · ${fmtDateTime(img.createdAt)}`}>
                   {known ? (uses.length ? <span className="text-slate-700 dark:text-slate-300">{uses[0]}{uses.length > 1 && ` +${uses.length - 1}`}</span> : <span className="text-amber-600">Unused</span>) : img.name}
                   <span className="block truncate text-slate-400">{fmtBytes(img.bytes)} · {img.createdByName}</span>
                 </figcaption>

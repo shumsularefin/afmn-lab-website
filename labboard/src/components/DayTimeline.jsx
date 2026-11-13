@@ -75,7 +75,7 @@ export function DayTimeline({ instruments, day, bookings, activeSessions, daySes
                   <div
                     key={b.key}
                     title={`${b.label}\n${fmtTime(b.start)} – ${fmtTime(b.end)}`}
-                    className={cx('absolute top-1.5 bottom-1.5 overflow-hidden truncate rounded-md px-1.5 py-1 font-semibold shadow-sm', b.cls, big ? 'text-sm' : 'text-[11px]', b.mine && 'ring-2 ring-indigo-300 ring-offset-1 dark:ring-offset-slate-900')}
+                    className={cx('absolute top-1.5 bottom-1.5 overflow-hidden truncate rounded-md px-1.5 py-1 font-semibold shadow-sm', b.cls, big ? 'text-sm' : 'text-xs', b.mine && 'ring-2 ring-indigo-300 ring-offset-1 dark:ring-offset-slate-900')}
                     style={{ left: `${left}%`, width: `${width}%` }}
                   >
                     {b.label}

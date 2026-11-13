@@ -23,7 +23,7 @@ export function ToastProvider({ children }) {
           <div
             key={t.id}
             role="status"
-            className="vibrancy-strong pointer-events-auto flex w-full max-w-sm animate-slide-down items-start gap-3 rounded-2xl px-3.5 py-3 text-[13px] shadow-sheet ring-1 ring-black/5 dark:ring-white/10"
+            className="vibrancy-strong pointer-events-auto flex w-full max-w-sm animate-slide-down items-start gap-3 rounded-2xl px-3.5 py-3 text-sm shadow-sheet ring-1 ring-black/5 dark:ring-white/10"
           >
             <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-bold text-white ${t.tone === 'error' ? 'bg-rose-500' : t.tone === 'success' ? 'bg-emerald-500' : 'bg-indigo-600'}`}>
               {t.tone === 'error' ? '!' : t.tone === 'success' ? '✓' : 'i'}
