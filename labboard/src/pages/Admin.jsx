@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -399,10 +399,11 @@ function IssuesTab() {
 
 function PhotosTab({ instruments }) {
   const all = useLiveQuery(() => query(collection(db, 'issues'), orderBy('createdAt', 'desc'), limit(500)), []);
-  if (all.loading) return null;
+  const chemicals = useLiveQuery(() => query(collection(db, 'chemicals'), where('photo', '!=', '')), []);
+  if (all.loading || chemicals.loading) return null;
   return (
     <Card className="p-4 sm:p-5">
-      <ImageLibrary instruments={instruments} issues={all.data} />
+      <ImageLibrary instruments={instruments} issues={all.data} chemicals={chemicals.data} />
     </Card>
   );
 }

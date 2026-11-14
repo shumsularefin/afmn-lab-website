@@ -214,7 +214,7 @@ export function PhotoStrip({ photos = [], size = 'h-16 w-16' }) {
 }
 
 /** Admin photo library: every uploaded image, where it is used, and cleanup of unused ones. */
-export function ImageLibrary({ onPick, instruments = null, issues = null }) {
+export function ImageLibrary({ onPick, instruments = null, issues = null, chemicals = [] }) {
   const { profile, isAdmin } = useAuth();
   const toast = useToast();
   const [images, setImages] = useState(null);
@@ -223,7 +223,7 @@ export function ImageLibrary({ onPick, instruments = null, issues = null }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(null);
   const known = Boolean(instruments && issues);
-  const usage = useMemo(() => (known ? imageUsage(instruments, issues) : new Map()), [known, instruments, issues]);
+  const usage = useMemo(() => (known ? imageUsage(instruments, issues, chemicals) : new Map()), [known, instruments, issues, chemicals]);
 
   // One read per photo; done once when the library opens, not on every live update.
   async function load() {
@@ -244,7 +244,7 @@ export function ImageLibrary({ onPick, instruments = null, issues = null }) {
     const used = usage.has(img.reference);
     if (filter === 'unused' && (!known || used)) return false;
     if (filter === 'used' && !used) return false;
-    if (filter === 'instrument' || filter === 'issue') if (img.kind !== filter) return false;
+    if (['instrument', 'issue', 'chemical'].includes(filter)) if (img.kind !== filter) return false;
     const hay = [img.name, img.createdByName, ...(usage.get(img.reference) || [])].join(' ').toLowerCase();
     return !q || hay.includes(q.toLowerCase());
   });
@@ -283,6 +283,7 @@ export function ImageLibrary({ onPick, instruments = null, issues = null }) {
             ...(known ? [{ value: 'used', label: 'In use' }, { value: 'unused', label: `Unused${unused.length ? ` (${unused.length})` : ''}` }] : []),
             { value: 'instrument', label: 'Instruments' },
             { value: 'issue', label: 'Issues' },
+            { value: 'chemical', label: 'Chemicals' },
           ]}
         />
       </div>

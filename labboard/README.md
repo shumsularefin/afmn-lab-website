@@ -83,6 +83,14 @@ All three versions are in this codebase. They are listed separately so you can r
 - **Big-screen mode** (`/board`) for a lab monitor: huge type, live clock, alternates between cards and timeline every 30 s, full-screen button, keeps the screen awake (Wake Lock), dark-mode toggle.
 - **Dark mode**, **mobile-first layout** with a bottom tab bar, and **installable PWA** (offline app shell, Firestore offline cache, app shortcuts).
 
+### Version 4: chemical inventory (`/chemicals`)
+- **Inventory for everyone:** what is in stock, how much is left (with a stock bar against the container size), where it is stored, GHS hazard symbols, CAS, grade, supplier, catalog and lot numbers, expiry date and a link to the safety data sheet.
+- **One-click status filters:** in stock, low stock (at or below the reorder level), out of stock, expiring within 30 days or expired. Search by name, formula, CAS, shelf, supplier or catalog number (press `/`), and filter by category, location or hazard. Sort by name, lowest stock, expiry, location or last change.
+- **Record what you use:** tap **Use**, type the amount (mL, L or µL — converted automatically), see what will be left before you save, and optionally say what it was for (pre-filled from your running instrument session). The stock can never go below zero, even if two people use the last bottle at once.
+- **Reorder requests:** members flag “we're running out” with a note; admins see a red badge on Chemicals and close the request by restocking. Low or out-of-stock items without a request are listed too.
+- **Usage log:** every stock change (used, restocked, stocktake, added) with person, time, amount and amount left; filter by everyone or just me, by type or text; this month's most-used chemicals; CSV export.
+- **Admin tools:** add or edit chemicals (with photo), **Restock** (adds stock, new lot number and expiry), **Stocktake** (set the exact amount on the shelf — disposal, spills, recounts), delete, **Import CSV** from a spreadsheet (with a downloadable template) and **Export CSV**.
+
 ---
 
 ## How it is wired into the website repo
@@ -110,7 +118,7 @@ afmn-lab-website/
 
 ## Data model (Firestore collections)
 
-The seven requested collections, plus two helpers: `allowlist` for pre-approved emails and `labImages` for uploaded photos.
+The seven requested collections, the chemical inventory (`chemicals`, `chemicalLogs`), plus two helpers: `allowlist` for pre-approved emails and `labImages` for uploaded photos.
 
 | Collection | Doc ID | Key fields |
 |---|---|---|
@@ -122,7 +130,9 @@ The seven requested collections, plus two helpers: `allowlist` for pre-approved 
 | `issues` | auto | `instrumentId`, `reportedBy`, `description`, `severity`, `photos: [lbimg:<id>]` (≤ 4), `status` (`open`/`resolved`), `resolvedBy`, `resolution` |
 | `maintenance` | auto | `instrumentId`, `kind` (`maintenance`/`calibration`), `title`, `intervalDays`, `lastServiced`, `nextDue`, `log[]` |
 | `allowlist` | lower-case email | `role` |
-| `labImages` | auto | `image` (JPEG data URL, ≤ 280 000 chars), `name`, `kind` (`instrument`/`issue`/`other`), `createdBy`, `createdByName`, `createdAt`. Immutable; deletable by the uploader or an admin. |
+| `chemicals` | auto | `name`, `formula`, `cas`, `category`, `grade`, `hazards: [flammable/oxidizer/…]`, `quantity`, `unit` (g/mg/kg/mL/µL/L/units/bottles/packs), `minQuantity` (reorder level), `containerSize`, `location`, `storage`, `supplier`, `catalogNo`, `lotNo`, `expiry`, `sdsURL`, `photo`, `notes`, `reorder: {uid, name, note, at} \| null`, `lastLogId`, `updatedAt`, `updatedBy` |
+| `chemicalLogs` | auto | `type` (`use`/`restock`/`adjust`/`create`), `chemicalId`, `chemicalName`, `unit`, `amount`, `before`, `after`, `note`, `lotNo`, `userId`, `userName`, `createdAt`. Append-only. Members may only write `use` entries, and only together with the matching stock decrease (checked by the rules). |
+| `labImages` | auto | `image` (JPEG data URL, ≤ 280 000 chars), `name`, `kind` (`instrument`/`issue`/`chemical`/`other`), `createdBy`, `createdByName`, `createdAt`. Immutable; deletable by the uploader or an admin. |
 
 `instruments.activeSession` is a small lock. A session is started in a **transaction** that creates the session and claims the instrument together, so two people can never start on the same instrument at once. The rules verify the lock points at a real session owned by the caller (`getAfter`).
 
@@ -205,6 +215,9 @@ The login page then shows an **“Emulator sign-in”** box where any email can 
 | I need longer | **+1h Extend** on the card, or +30m/+1h/+3h/… on **My session**. |
 | Reserve for later | **Bookings** → pick instrument → tap a slot → choose length → **Book**. Start the session within 30 min of the start or it's released. |
 | Something's broken | Flag icon on the card → describe → **Send report**. |
+| Find a chemical | **Chemicals** → search or tap a status tile (Low, Out, Expiring). Tap a row for location, hazards, SDS and history. |
+| Log chemical use | **Use** on the chemical → amount → **Record use**. |
+| We're running out | Open the chemical → **Request reorder**. |
 | Find who ran what | **History** → filter by instrument / person / dates / text → **Export CSV**. |
 
 ---

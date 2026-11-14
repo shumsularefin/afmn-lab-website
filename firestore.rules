@@ -12,7 +12,8 @@ rules_version = '2';
 //   removals/{key}         private  ties each deletion to its log entry
 //
 // LabBoard (instrument board at /update, source in labboard/) shares this project. Its collections are
-// users, allowlist, instruments, sessions, bookings, templates, issues, maintenance, labImages; see the LabBoard section
+// users, allowlist, instruments, sessions, bookings, templates, issues, maintenance, labImages, chemicals,
+// chemicalLogs; see the LabBoard section
 // at the end of this file. The two apps use different collections and never touch each other's documents.
 //
 // Only Google sign-in counts. Every write carries an auditId; the rules check that the log entry is
@@ -420,16 +421,100 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['image', 'name', 'kind', 'createdBy', 'createdByName', 'createdAt'])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
-        && request.resource.data.kind in ['instrument', 'issue', 'other']
+        && request.resource.data.kind in ['instrument', 'issue', 'chemical', 'other']
         && request.resource.data.name is string && request.resource.data.name.size() <= 150
         && request.resource.data.image is string && request.resource.data.image.size() <= 280000
         && request.resource.data.image.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
         // Instrument photos are an admin job; anyone approved may attach photos to an issue report.
-        && (request.resource.data.kind != 'instrument' || lbAdmin());
+        && (!(request.resource.data.kind in ['instrument', 'chemical']) || lbAdmin());
       allow delete: if lbAdmin() || (lbApproved() && resource.data.createdBy == request.auth.uid);
       allow update: if false;
     }
 
+    // ---------------------------------------------------------------- chemical inventory
+    // Admins keep the inventory; every approved person can see what is in stock. Members record what
+    // they use: the stock may only go DOWN, and only together with a matching 'use' entry in
+    // chemicalLogs written in the same transaction (before/after/user/time must agree), so the log
+    // always explains the stock level. Members may also flag a chemical for reordering.
+    function lbChemPath(id) { return /databases/$(database)/documents/chemicals/$(id); }
+    function lbChemLogPath(id) { return /databases/$(database)/documents/chemicalLogs/$(id); }
+    function lbStr(d, k, max) { return !(k in d) || (d[k] is string && d[k].size() <= max); }
+    function lbNum(d, k) { return !(k in d) || (d[k] is number && d[k] >= 0); }
+
+    function lbValidChemical(d) {
+      return d.keys().hasOnly(['name', 'formula', 'cas', 'category', 'grade', 'hazards', 'quantity', 'unit',
+                               'minQuantity', 'containerSize', 'location', 'storage', 'supplier', 'catalogNo',
+                               'lotNo', 'expiry', 'sdsURL', 'photo', 'notes', 'reorder', 'lastLogId',
+                               'createdAt', 'updatedAt', 'updatedBy'])
+          && d.name is string && d.name.size() > 0 && d.name.size() <= 200
+          && d.quantity is number && d.quantity >= 0
+          && d.unit in ['g', 'mg', 'kg', 'mL', 'µL', 'L', 'units', 'bottles', 'packs']
+          && lbNum(d, 'minQuantity') && lbNum(d, 'containerSize')
+          && lbStr(d, 'formula', 100) && lbStr(d, 'cas', 20) && lbStr(d, 'category', 60) && lbStr(d, 'grade', 100)
+          && lbStr(d, 'location', 120) && lbStr(d, 'storage', 80) && lbStr(d, 'supplier', 120)
+          && lbStr(d, 'catalogNo', 60) && lbStr(d, 'lotNo', 60) && lbStr(d, 'sdsURL', 500)
+          && lbStr(d, 'photo', 600) && lbStr(d, 'notes', 2000)
+          && (!('hazards' in d) || (d.hazards is list && d.hazards.size() <= 9))
+          && (d.get('expiry', null) == null || d.expiry is timestamp)
+          && (d.get('reorder', null) == null || d.reorder is map);
+    }
+
+    function lbValidUse(id) {
+      let d = request.resource.data;
+      let log = getAfter(lbChemLogPath(d.lastLogId)).data;
+      return d.quantity is number && d.quantity >= 0 && d.quantity < resource.data.quantity
+          && d.updatedBy == request.auth.uid && d.updatedAt == request.time
+          && log.type == 'use' && log.chemicalId == id && log.userId == request.auth.uid
+          && log.before == resource.data.quantity && log.after == d.quantity
+          && log.createdAt == request.time;
+    }
+
+    function lbValidReorder() {
+      let r = request.resource.data.get('reorder', null);
+      let old = resource.data.get('reorder', null);
+      return (old == null && r is map
+               && r.keys().hasOnly(['uid', 'name', 'note', 'at'])
+               && r.uid == request.auth.uid && r.at == request.time
+               && r.name is string && r.name.size() <= 200
+               && r.note is string && r.note.size() <= 300)
+          // The person who asked can withdraw their request (admins clear it when restocking).
+          || (r == null && old != null && old.uid == request.auth.uid);
+    }
+
+    match /chemicals/{id} {
+      allow read: if lbApproved();
+      allow create: if lbAdmin() && lbValidChemical(request.resource.data);
+      allow update: if (lbAdmin() && lbValidChemical(request.resource.data))
+        || (lbMember() && lbOnlyChanges(['quantity', 'lastLogId', 'updatedAt', 'updatedBy']) && lbValidUse(id))
+        || (lbMember() && lbOnlyChanges(['reorder']) && lbValidReorder());
+      allow delete: if lbAdmin();
+    }
+
+    // Append-only stock movements: use (members), create / restock / adjust (admins).
+    match /chemicalLogs/{id} {
+      allow read: if lbApproved();
+      allow create: if request.resource.data.keys().hasOnly(['type', 'chemicalId', 'chemicalName', 'unit', 'amount',
+                                                             'before', 'after', 'note', 'lotNo', 'userId',
+                                                             'userName', 'createdAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.chemicalId is string
+        && request.resource.data.amount is number && request.resource.data.amount >= 0
+        && request.resource.data.before is number && request.resource.data.after is number
+        && request.resource.data.after >= 0
+        && request.resource.data.note is string && request.resource.data.note.size() <= 500
+        && request.resource.data.userName is string && request.resource.data.userName.size() <= 200
+        && (
+          (lbAdmin() && request.resource.data.type in ['create', 'restock', 'adjust'])
+          || (lbMember() && request.resource.data.type == 'use'
+              && request.resource.data.amount > 0
+              && request.resource.data.after < request.resource.data.before
+              && getAfter(lbChemPath(request.resource.data.chemicalId)).data.lastLogId == id
+              && getAfter(lbChemPath(request.resource.data.chemicalId)).data.quantity == request.resource.data.after)
+        );
+      allow update: if false;
+      allow delete: if lbAdmin();
+    }
 
     match /{document=**} {
       allow read, write: if false;

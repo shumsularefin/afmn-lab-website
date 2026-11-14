@@ -108,12 +108,13 @@ export async function deleteImage(id) {
   cache.delete(REF_PREFIX + id);
 }
 
-/** reference -> [label] for every instrument and issue that shows the image. */
-export function imageUsage(instruments = [], issues = []) {
+/** reference -> [label] for every instrument, issue and chemical that shows the image. */
+export function imageUsage(instruments = [], issues = [], chemicals = []) {
   const usage = new Map();
   const add = (ref, label) => isImageRef(ref) && usage.set(ref, [...(usage.get(ref) || []), label]);
   for (const i of instruments) add(i.photoURL, `${i.name} photo`);
   for (const i of issues) for (const p of i.photos || []) add(p, `Issue · ${i.instrumentName || 'instrument'}`);
+  for (const c of chemicals) add(c.photo, `Chemical · ${c.name}`);
   return usage;
 }
 

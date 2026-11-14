@@ -18,6 +18,7 @@ const History = lazy(() => import('./pages/History'));
 const InstrumentDetail = lazy(() => import('./pages/InstrumentDetail'));
 const Maintenance = lazy(() => import('./pages/Maintenance'));
 const Stats = lazy(() => import('./pages/Stats'));
+const Chemicals = lazy(() => import('./pages/Chemicals'));
 const Admin = lazy(() => import('./pages/Admin'));
 const BigScreen = lazy(() => import('./pages/BigScreen'));
 
@@ -55,6 +56,7 @@ export default function App() {
                 <Route path="bookings" element={<Bookings />} />
                 <Route path="history" element={<History />} />
                 <Route path="instrument/:id" element={<InstrumentDetail />} />
+                <Route path="chemicals" element={<Chemicals />} />
                 <Route path="maintenance" element={<Maintenance />} />
                 <Route path="stats" element={<Stats />} />
                 <Route path="admin" element={<AdminOnly><Admin /></AdminOnly>} />

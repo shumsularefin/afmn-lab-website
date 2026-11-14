@@ -1,8 +1,9 @@
 import { addDoc, collection, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import { SAMPLE_INSTRUMENTS, SAMPLE_MAINTENANCE, SAMPLE_TEMPLATES } from './seedData';
+import { SAMPLE_CHEMICALS, SAMPLE_INSTRUMENTS, SAMPLE_MAINTENANCE, SAMPLE_TEMPLATES } from './seedData';
+import { importChemicals } from './chemicals';
 
-/** Admin-only: writes sample instruments, maintenance and templates. */
+/** Admin-only: writes sample instruments, maintenance, templates and a chemical inventory. */
 export async function seedSampleData(profile) {
   const existing = await getDocs(collection(db, 'instruments'));
   const byName = new Map(existing.docs.map((d) => [d.data().name, d.id]));
@@ -50,5 +51,15 @@ export async function seedSampleData(profile) {
       createdAt: serverTimestamp(),
     });
   }
+  const chems = await getDocs(collection(db, 'chemicals'));
+  const haveChem = new Set(chems.docs.map((d) => d.data().name));
+  const day = 86400e3;
+  await importChemicals(
+    SAMPLE_CHEMICALS.filter((c) => !haveChem.has(c.name)).map(({ expiresIn, ...c }) => ({
+      ...c,
+      expiry: expiresIn == null ? '' : new Date(Date.now() + expiresIn * day).toISOString().slice(0, 10),
+    })),
+    profile,
+  );
   return Object.keys(ids).length;
 }
