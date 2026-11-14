@@ -157,29 +157,59 @@ describe('sessions', () => {
 
 describe('bookings', () => {
   const booking = (uid, start, end, instrumentId = 'pcr') => ({ instrumentId, userId: uid, userName: uid, start: ts(start), end: ts(end), status: 'booked', purpose: '' });
+  // Bookings are written together with their entry in the instrument's schedule document.
+  let n = 0;
+  async function book(db, data, id = `b${++n}`) {
+    const b = writeBatch(db);
+    b.set(doc(db, 'bookingSchedules', data.instrumentId), { b: { [id]: { s: data.start, e: data.end, uid: data.userId, name: data.userName } }, updatedAt: serverTimestamp() }, { merge: true });
+    b.set(doc(db, 'bookings', id), data);
+    await b.commit();
+    return { id };
+  }
 
   test('valid booking within max length', async () => {
-    await assertSucceeds(addDoc(collection(as(users.alice), 'bookings'), booking('alice', H, 3 * H)));
+    await assertSucceeds(book(as(users.alice), booking('alice', H, 3 * H)));
+  });
+  test('a booking without its schedule entry is rejected', async () => {
+    await assertFails(addDoc(collection(as(users.alice), 'bookings'), booking('alice', H, 3 * H)));
+  });
+  test('the schedule entry must match the booking', async () => {
+    const db = as(users.alice);
+    const b = writeBatch(db);
+    const data = booking('alice', H, 3 * H);
+    b.set(doc(db, 'bookingSchedules', 'pcr'), { b: { x1: { s: data.start, e: ts(2 * H), uid: 'alice', name: 'alice' } } });
+    b.set(doc(db, 'bookings', 'x1'), data);
+    await assertFails(b.commit());
+  });
+  test('moving a booking must update the schedule too', async () => {
+    const r = await book(as(users.alice), booking('alice', H, 2 * H));
+    await assertFails(updateDoc(doc(as(users.alice), 'bookings', r.id), { start: ts(2 * H), end: ts(3 * H) }));
+    await assertSucceeds(updateDoc(doc(as(users.alice), 'bookings', r.id), { purpose: 'new purpose' }));
   });
   test('booking longer than the instrument maximum is rejected', async () => {
-    await assertFails(addDoc(collection(as(users.alice), 'bookings'), booking('alice', H, 6 * H)));
+    await assertFails(book(as(users.alice), booking('alice', H, 6 * H)));
   });
   test('booking in the past is rejected', async () => {
-    await assertFails(addDoc(collection(as(users.alice), 'bookings'), booking('alice', -3 * H, -H)));
+    await assertFails(book(as(users.alice), booking('alice', -3 * H, -H)));
   });
   test('restricted instrument booking needs training', async () => {
-    await assertFails(addDoc(collection(as(users.alice), 'bookings'), booking('alice', H, 2 * H, 'confocal')));
+    await assertFails(book(as(users.alice), booking('alice', H, 2 * H, 'confocal')));
   });
   test('others cannot cancel your booking', async () => {
-    const ref = await addDoc(collection(as(users.alice), 'bookings'), booking('alice', H, 2 * H));
+    const ref = await book(as(users.alice), booking('alice', H, 2 * H));
     await assertFails(updateDoc(doc(as(users.bob), 'bookings', ref.id), { status: 'cancelled', cancelledAt: Timestamp.now() }));
     await assertSucceeds(updateDoc(doc(as(users.alice), 'bookings', ref.id), { status: 'cancelled', cancelledAt: Timestamp.now() }));
   });
   test('no-show auto-release only after 30 minutes', async () => {
-    const early = await addDoc(collection(as(users.alice), 'bookings'), booking('alice', -10 * 60e3, H));
-    await assertFails(updateDoc(doc(as(users.bob), 'bookings', early.id), { status: 'released', releasedAt: Timestamp.now() }));
-    const late = await addDoc(collection(as(users.alice), 'bookings'), booking('alice', -40 * 60e3, H));
-    await assertSucceeds(updateDoc(doc(as(users.guest), 'bookings', late.id), { status: 'released', releasedAt: Timestamp.now() }));
+    const early = await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'bookings', 'early'), booking('alice', -10 * 60e3, H)));
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'bookings', 'late'), booking('alice', -40 * 60e3, H)));
+    await assertFails(updateDoc(doc(as(users.bob), 'bookings', 'early'), { status: 'released', releasedAt: Timestamp.now() }));
+    await assertSucceeds(updateDoc(doc(as(users.guest), 'bookings', 'late'), { status: 'released', releasedAt: Timestamp.now() }));
+  });
+  test('schedule documents: approved users only, fixed shape', async () => {
+    await assertFails(setDoc(doc(as(users.pending), 'bookingSchedules', 'pcr'), { b: {} }));
+    await assertFails(setDoc(doc(as(users.alice), 'bookingSchedules', 'pcr'), { b: {}, hack: true }));
+    await assertSucceeds(setDoc(doc(as(users.alice), 'bookingSchedules', 'pcr'), { b: {} }));
   });
 });
 

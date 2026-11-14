@@ -52,7 +52,7 @@ All three versions are in this codebase. They are listed separately so you can r
 
 ### Version 2: planning
 - **Booking calendar** (week view per instrument). Tap a free slot, pick a length, done.
-  - **Overlapping bookings are blocked**, both by a server re-check and by a race-condition guard (see limitations).
+  - **Overlapping bookings are impossible**, even when two people press *Book* at the same moment: each instrument has one schedule document (`bookingSchedules/{instrumentId}`), and every booking is written in a transaction together with its entry there, so simultaneous attempts are serialized by Firestore and only the first one wins. The security rules refuse a booking (or a move) whose schedule entry is missing. Starting a session also re-checks the schedule on the server, so nobody can walk up during someone else's reservation.
   - **Maximum booking length** per instrument, enforced in the security rules.
   - **Auto-release:** a booking nobody starts within **30 minutes** is released automatically.
 - **Day timeline:** one row per instrument, coloured blocks across 24 h (in use / overdue / booked / finished / out of service), a “now” line, and day navigation.
@@ -125,6 +125,7 @@ The seven requested collections, the chemical inventory (`chemicals`, `chemicalL
 | `users` | Firebase Auth uid | `email`, `name`, `photoURL`, `role` (`admin`/`member`/`guest`), `approved`, `trainedOn: [instrumentId]`, `notify` |
 | `instruments` | auto | `name`, `type`, `room`, `location`, `photoURL`, `manualURL`, `safetyNotes`, `requiredTraining`, `restricted`, `maxBookingHours`, `status` (`ok`/`out_of_service`), `outOfServiceReason`, `activeSession: {sessionId, uid} \| null`, `freeSince` |
 | `sessions` | auto | `instrumentId`, `instrumentName`, `userId`, `userName`, `userPhoto`, `sample`, `params: [{key,value}]`, `comments`, `startedAt`, `expectedEnd`, `endedAt`, `status` (`active`/`finished`), `bookingId`, `extendedCount` |
+| `bookingSchedules` | instrument id | `b`: map of bookingId → `{s, e, uid, name}` for current and future bookings (old ones are pruned automatically), `updatedAt` |
 | `bookings` | auto | `instrumentId`, `userId`, `userName`, `start`, `end`, `purpose`, `status` (`booked`/`started`/`cancelled`/`released`), `sessionId` |
 | `templates` | auto | `instrumentId`, `name`, `params`, `createdBy` |
 | `issues` | auto | `instrumentId`, `reportedBy`, `description`, `severity`, `photos: [lbimg:<id>]` (≤ 4), `status` (`open`/`resolved`), `resolvedBy`, `resolution` |

@@ -12,7 +12,7 @@ rules_version = '2';
 //   removals/{key}         private  ties each deletion to its log entry
 //
 // LabBoard (instrument board at /update, source in labboard/) shares this project. Its collections are
-// users, allowlist, instruments, sessions, bookings, templates, issues, maintenance, labImages, chemicals,
+// users, allowlist, instruments, sessions, bookings, bookingSchedules, templates, issues, maintenance, labImages, chemicals,
 // chemicalLogs; see the LabBoard section
 // at the end of this file. The two apps use different collections and never touch each other's documents.
 //
@@ -348,6 +348,25 @@ service cloud.firestore {
           && d.end <= d.start + duration.value(maxH, 'h');
     }
 
+    // One schedule document per instrument holds every upcoming booking as { s, e, uid, name } keyed by
+    // booking id. Every booking create/move must write its entry there in the same transaction, so two
+    // people grabbing overlapping slots at the same moment contend on this one document: Firestore lets
+    // only one transaction through and the other retries, sees the clash and stops. No double bookings.
+    function lbSchedPath(instId) { return /databases/$(database)/documents/bookingSchedules/$(instId); }
+    function lbInSchedule(id, d) {
+      let b = getAfter(lbSchedPath(d.instrumentId)).data.b;
+      return id in b && b[id].s == d.start && b[id].e == d.end && b[id].uid == request.auth.uid;
+    }
+
+    match /bookingSchedules/{instId} {
+      allow read: if lbApproved();
+      allow create, update: if lbApproved()
+        && request.resource.data.keys().hasOnly(['b', 'updatedAt'])
+        && request.resource.data.b is map
+        && request.resource.data.b.size() <= 500;
+      allow delete: if lbAdmin();
+    }
+
     match /bookings/{id} {
       allow read: if lbApproved();
 
@@ -356,6 +375,7 @@ service cloud.firestore {
         && request.resource.data.status == 'booked'
         && request.resource.data.end > request.time
         && lbValidBookingTimes(request.resource.data)
+        && lbInSchedule(id, request.resource.data)
         && lbTrainedFor(request.resource.data.instrumentId)
         && lbInService(request.resource.data.instrumentId);
 
@@ -372,7 +392,8 @@ service cloud.firestore {
           && request.resource.data.status == 'booked'
           && lbOnlyChanges(['start', 'end', 'purpose'])
           && request.resource.data.end > request.time
-          && lbValidBookingTimes(request.resource.data))
+          && lbValidBookingTimes(request.resource.data)
+          && (lbUnchanged('start') && lbUnchanged('end') || lbInSchedule(id, request.resource.data)))
         // Any approved user may auto-release a no-show 30 minutes after its start
         || (lbApproved()
           && resource.data.status == 'booked'

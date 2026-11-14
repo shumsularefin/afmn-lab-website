@@ -2,7 +2,7 @@
 // /update (its own scope), so the rest of the website is never touched. The scope is "/update" without a
 // trailing slash because Firebase Hosting serves the app at /update (it redirects /update/ there). Firestore data has its own
 // offline cache (IndexedDB) in the app.
-const CACHE = 'labboard-v2';
+const CACHE = 'labboard-v3';
 const BASE = new URL('./', self.location).href; // https://afmn-lab.web.app/update/ (this file's folder)
 const ROOT = new URL(BASE).pathname; // /update/
 const inScope = (path) => path === ROOT.slice(0, -1) || path.startsWith(ROOT);
@@ -25,16 +25,24 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return; // never touch Firebase/Google traffic
   if (!inScope(url.pathname)) return;
 
-  // Navigations: network first, fall back to the cached shell (single-page app).
+  // Navigations: network first so new versions show up straight away, but on a slow connection don't
+  // keep people waiting: after 1.5 s use the cached shell (the fresh copy is still saved for next time).
   if (req.mode === 'navigate') {
+    const network = fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(BASE + 'index.html', copy));
+      }
+      return res;
+    });
+    e.waitUntil(network.catch(() => {}));
     e.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(BASE + 'index.html', copy));
-          return res;
-        })
-        .catch(() => caches.match(BASE + 'index.html')),
+      new Promise((resolve) => {
+        let done = false;
+        const finish = (r) => !done && r && ((done = true), resolve(r));
+        network.then(finish).catch(() => caches.match(BASE + 'index.html').then((r) => finish(r || Response.error())));
+        setTimeout(() => caches.match(BASE + 'index.html').then(finish), 1500);
+      }),
     );
     return;
   }

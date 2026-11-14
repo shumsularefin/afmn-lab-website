@@ -14,13 +14,37 @@ const envConfig = {
 // On Firebase Hosting the web config is served at /__/firebase/init.json (the website's own dashboard uses
 // the same source), so nothing has to be configured or committed. VITE_FIREBASE_* variables win when set,
 // which is how local development and the emulators work.
+const CONFIG_KEY = 'labboard-fb-config';
+async function fetchHosted() {
+  const res = await fetch('/__/firebase/init.json', { cache: 'no-cache' });
+  if (!res.ok) return null;
+  const hosted = await res.json();
+  return hosted.apiKey && hosted.projectId ? hosted : null;
+}
 async function loadConfig() {
   if (envConfig.apiKey && envConfig.projectId) return envConfig;
+  // Start instantly from the copy saved on the last visit (the web config almost never changes) and
+  // refresh it in the background; only the very first visit waits for the network.
   try {
-    const res = await fetch('/__/firebase/init.json', { cache: 'no-cache' });
-    if (res.ok) {
-      const hosted = await res.json();
-      if (hosted.apiKey && hosted.projectId) return hosted;
+    const cached = JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null');
+    if (cached?.apiKey && cached?.projectId) {
+      fetchHosted()
+        .then((c) => c && localStorage.setItem(CONFIG_KEY, JSON.stringify(c)))
+        .catch(() => {});
+      return cached;
+    }
+  } catch {
+    /* storage blocked */
+  }
+  try {
+    const hosted = await fetchHosted();
+    if (hosted) {
+      try {
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(hosted));
+      } catch {
+        /* storage blocked */
+      }
+      return hosted;
     }
   } catch {
     /* not on Firebase Hosting */
