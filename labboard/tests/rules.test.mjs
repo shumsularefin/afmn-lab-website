@@ -234,6 +234,78 @@ describe('uploaded images', () => {
   });
 });
 
+describe('chemical inventory', () => {
+  const chem = (extra = {}) => ({ name: 'Ethanol', formula: 'C2H6O', cas: '64-17-5', category: 'Solvents', hazards: ['flammable'],
+    quantity: 2000, unit: 'mL', minQuantity: 500, containerSize: 2500, location: 'Cab A', expiry: null, reorder: null, lastLogId: 'l0', ...extra });
+  const seed = () => env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'chemicals', 'etoh'), chem()));
+  const log = (uid, extra = {}) => ({ type: 'use', chemicalId: 'etoh', chemicalName: 'Ethanol', unit: 'mL', amount: 50, before: 2000, after: 1950,
+    note: 'HPLC', lotNo: '', userId: uid, userName: uid, createdAt: serverTimestamp(), ...extra });
+  function use(db, uid, { logId = 'l1', q = 1950, logExtra = {}, chemExtra = {} } = {}) {
+    const b = writeBatch(db);
+    b.set(doc(db, 'chemicalLogs', logId), log(uid, logExtra));
+    b.update(doc(db, 'chemicals', 'etoh'), { quantity: q, lastLogId: logId, updatedAt: serverTimestamp(), updatedBy: uid, ...chemExtra });
+    return b.commit();
+  }
+
+  test('everyone approved can see the stock; strangers cannot', async () => {
+    await seed();
+    await assertSucceeds(getDoc(doc(as(users.guest), 'chemicals', 'etoh')));
+    await assertFails(getDoc(doc(as(users.pending), 'chemicals', 'etoh')));
+  });
+  test('only admins add, edit or delete chemicals', async () => {
+    await assertFails(setDoc(doc(as(users.alice), 'chemicals', 'x'), chem()));
+    await assertSucceeds(setDoc(doc(as(users.admin), 'chemicals', 'x'), chem()));
+    await assertFails(setDoc(doc(as(users.admin), 'chemicals', 'y'), chem({ quantity: -1 })));
+    await assertFails(setDoc(doc(as(users.admin), 'chemicals', 'z'), chem({ unit: 'gallons' })));
+    await assertFails(updateDoc(doc(as(users.alice), 'chemicals', 'x'), { location: 'Bin' }));
+    await assertFails(deleteDoc(doc(as(users.alice), 'chemicals', 'x')));
+    await assertSucceeds(updateDoc(doc(as(users.admin), 'chemicals', 'x'), { location: 'Cab B', quantity: 4000 }));
+    await assertSucceeds(deleteDoc(doc(as(users.admin), 'chemicals', 'x')));
+  });
+  test('a member records usage together with a matching log entry', async () => {
+    await seed();
+    await assertSucceeds(use(as(users.alice), 'alice'));
+  });
+  test('usage cannot add stock, go below zero, or touch other fields', async () => {
+    await seed();
+    await assertFails(use(as(users.alice), 'alice', { q: 2100, logExtra: { after: 2100 } }));
+    await assertFails(use(as(users.alice), 'alice', { q: -5, logExtra: { after: -5, amount: 2005 } }));
+    await assertFails(use(as(users.alice), 'alice', { chemExtra: { location: 'Home' } }));
+  });
+  test('usage must agree with its log (amount, owner, chemical)', async () => {
+    await seed();
+    await assertFails(use(as(users.alice), 'alice', { logExtra: { after: 1990 } }));
+    await assertFails(use(as(users.alice), 'alice', { logExtra: { userId: 'bob' } }));
+    await assertFails(use(as(users.alice), 'alice', { logExtra: { before: 5000 } }));
+    // A stock change without its log, or a log without the stock change.
+    await assertFails(updateDoc(doc(as(users.alice), 'chemicals', 'etoh'), { quantity: 10, lastLogId: 'nope', updatedAt: serverTimestamp(), updatedBy: 'alice' }));
+    await assertFails(setDoc(doc(as(users.alice), 'chemicalLogs', 'l9'), log('alice')));
+  });
+  test('guests cannot use chemicals; members cannot write restock entries', async () => {
+    await seed();
+    await assertFails(use(as(users.guest), 'guest'));
+    await assertFails(use(as(users.alice), 'alice', { q: 2500, logExtra: { type: 'restock', after: 2500, amount: 500 } }));
+    await assertSucceeds(use(as(users.admin), 'admin', { q: 2500, logExtra: { type: 'restock', after: 2500, amount: 500 } }));
+  });
+  test('logs are append-only', async () => {
+    await seed();
+    await use(as(users.alice), 'alice');
+    await assertFails(updateDoc(doc(as(users.alice), 'chemicalLogs', 'l1'), { amount: 1 }));
+    await assertFails(deleteDoc(doc(as(users.alice), 'chemicalLogs', 'l1')));
+    await assertSucceeds(deleteDoc(doc(as(users.admin), 'chemicalLogs', 'l1')));
+  });
+  test('members can request a reorder once and withdraw their own request', async () => {
+    await seed();
+    const req = (uid) => ({ reorder: { uid, name: uid, note: 'almost empty', at: serverTimestamp() } });
+    await assertFails(updateDoc(doc(as(users.guest), 'chemicals', 'etoh'), req('guest')));
+    await assertFails(updateDoc(doc(as(users.alice), 'chemicals', 'etoh'), req('bob')));
+    await assertSucceeds(updateDoc(doc(as(users.alice), 'chemicals', 'etoh'), req('alice')));
+    await assertFails(updateDoc(doc(as(users.bob), 'chemicals', 'etoh'), req('bob')));
+    await assertFails(updateDoc(doc(as(users.bob), 'chemicals', 'etoh'), { reorder: null }));
+    await assertSucceeds(updateDoc(doc(as(users.alice), 'chemicals', 'etoh'), { reorder: null }));
+  });
+});
+
 describe('the website dashboard is unaffected', () => {
   const anon = () => env.unauthenticatedContext().firestore();
   test('public site content is still world-readable and not world-writable', async () => {

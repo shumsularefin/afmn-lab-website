@@ -19,6 +19,7 @@ const SECTIONS = [
       { to: '/', label: 'Dashboard', icon: 'grid', end: true },
       { to: '/timeline', label: 'Timeline', icon: 'timeline' },
       { to: '/bookings', label: 'Bookings', icon: 'calendar' },
+      { to: '/chemicals', label: 'Chemicals', icon: 'flask' },
     ],
   },
   {
@@ -41,10 +42,12 @@ const SECTIONS = [
 ];
 
 function useBadges() {
-  const { profile } = useAuth();
-  const { activeSessions, openIssues } = useData();
+  const { profile, isAdmin } = useAuth();
+  const { activeSessions, openIssues, reorders } = useData();
   const mine = activeSessions.filter((s) => s.userId === profile?.uid).length;
-  return (to) => (to === '/my' ? mine : to === '/admin' ? openIssues.length : 0);
+  // Admins see open reorder requests on Chemicals; everyone sees their own running sessions.
+  const counts = { '/my': mine, '/admin': openIssues.length, '/chemicals': isAdmin ? reorders.length : 0 };
+  return (to) => counts[to] || 0;
 }
 
 function Sidebar() {
@@ -227,6 +230,7 @@ function MoreSheet({ open, onClose }) {
   const badge = useBadges();
   if (!open) return null;
   const rows = [
+    { to: '/chemicals', label: 'Chemicals', icon: 'flask', tint: 'bg-teal-500' },
     { to: '/timeline', label: 'Timeline', icon: 'timeline', tint: 'bg-indigo-500' },
     { to: '/history', label: 'History', icon: 'history', tint: 'bg-slate-500' },
     { to: '/maintenance', label: 'Maintenance', icon: 'wrench', tint: 'bg-orange-500' },

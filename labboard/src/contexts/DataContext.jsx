@@ -34,6 +34,13 @@ export function DataProvider({ children }) {
     [isApproved],
   );
 
+  // Only open reorder requests are watched app-wide (for the badge); the full inventory is loaded on
+  // the Chemicals page itself so it doesn't cost reads on every page view.
+  const reorders = useLiveQuery(
+    () => (isApproved ? query(collection(db, 'chemicals'), where('reorder', '!=', null)) : null),
+    [isApproved],
+  );
+
   // Auto-release no-show bookings (client-side, because Cloud Functions need Blaze).
   useEffect(() => {
     if (!isApproved) return;
@@ -53,10 +60,11 @@ export function DataProvider({ children }) {
       bookings: bookings.data,
       maintenance: maintenance.data,
       openIssues: openIssues.data,
+      reorders: reorders.data,
       loading: instruments.loading || activeSessions.loading,
       error: instruments.error || activeSessions.error || bookings.error,
     };
-  }, [instruments, activeSessions, bookings, maintenance, openIssues]);
+  }, [instruments, activeSessions, bookings, maintenance, openIssues, reorders]);
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }
