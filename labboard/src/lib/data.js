@@ -3,6 +3,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocsFromServer,
@@ -38,6 +39,19 @@ export async function ensureUserProfile(fbUser, allowedDomain) {
   const email = (fbUser.email || '').toLowerCase();
   const ref = doc(db, 'users', fbUser.uid);
   const snap = await getDoc(ref);
+  const cur = snap.exists() ? snap.data() : null;
+
+  // Approved returning users: nothing to look up. Only touch the profile when something changed or the
+  // last-login stamp is a few hours old, so ordinary page loads cost no writes at all.
+  if (cur?.approved) {
+    const name = fbUser.displayName || cur.name;
+    const photoURL = fbUser.photoURL || cur.photoURL || '';
+    const stale = !toDate(cur.lastLoginAt) || Date.now() - toDate(cur.lastLoginAt) > 6 * HOUR;
+    if (stale || name !== cur.name || photoURL !== cur.photoURL) {
+      await updateDoc(ref, { lastLoginAt: serverTimestamp(), name, photoURL }).catch(() => {});
+    }
+    return;
+  }
 
   let listed = null;
   try {
@@ -56,7 +70,7 @@ export async function ensureUserProfile(fbUser, allowedDomain) {
       ? { role: 'member', approved: true }
       : { role: 'guest', approved: false };
 
-  if (!snap.exists()) {
+  if (!cur) {
     const profile = {
       uid: fbUser.uid,
       email,
@@ -77,9 +91,8 @@ export async function ensureUserProfile(fbUser, allowedDomain) {
     return;
   }
 
-  const cur = snap.data();
   const patch = { lastLoginAt: serverTimestamp(), name: fbUser.displayName || cur.name, photoURL: fbUser.photoURL || cur.photoURL || '' };
-  if (!cur.approved && access.approved) Object.assign(patch, access);
+  if (access.approved) Object.assign(patch, access);
   try {
     await updateDoc(ref, patch);
   } catch {
@@ -128,12 +141,20 @@ export async function startSession({ instrument, profile, sample, params, commen
   const instRef = doc(db, 'instruments', instrument.id);
   const sessRef = doc(collection(db, 'sessions'));
 
-  await runTransaction(db, async (tx) => {
-    const fresh = await tx.get(instRef);
+  const run = (withSchedule) => runTransaction(db, async (tx) => {
+    const [fresh, sched] = await Promise.all([tx.get(instRef), withSchedule ? tx.get(schedRef(instrument.id)) : null]);
     if (!fresh.exists()) throw new Error('Instrument not found.');
     const d = fresh.data();
     if (d.status === 'out_of_service') throw new Error('Instrument is out of service.');
     if (d.activeSession) throw new Error('Someone just started a session on this instrument.');
+    // Re-check reservations against the server copy, not the possibly-stale list on screen.
+    for (const [id, e] of Object.entries(sched?.exists() ? sched.data().b || {} : {})) {
+      if (e.uid === profile.uid || !(toDate(e.s) <= now && toDate(e.e) > now)) continue;
+      const b = await tx.get(doc(db, 'bookings', id));
+      if (b.exists() && b.data().status === 'booked' && bookingIsLive(b.data(), now)) {
+        throw new Error(`Reserved by ${b.data().userName} until ${fmtTime(b.data().end)}.`);
+      }
+    }
 
     tx.set(sessRef, {
       instrumentId: instrument.id,
@@ -156,6 +177,7 @@ export async function startSession({ instrument, profile, sample, params, commen
       tx.update(doc(db, 'bookings', mine.id), { status: 'started', sessionId: sessRef.id, startedAt: serverTimestamp() });
     }
   });
+  await withScheduleFallback(() => run(true), () => run(false));
   return sessRef.id;
 }
 
@@ -195,36 +217,108 @@ export function conflictForExtension(session, newEnd, bookings) {
 }
 
 // ── Bookings ─────────────────────────────────────────────────────────────────
+//
+// Conflict-proof booking: every instrument has one small schedule document (bookingSchedules/{id}) that
+// lists its upcoming bookings. A booking is created in a transaction that reads that document, checks for
+// overlaps and writes the booking plus its schedule entry together (the security rules insist on the entry).
+// If two people book overlapping times at the same moment, both transactions touch the same document, so
+// Firestore commits only one; the other is retried automatically, now sees the clash and is refused.
+// It also needs no collection scans: one small read and one write, instead of reading every booking.
 
-function findConflict(list, start, end, ignoreId) {
-  const now = new Date();
-  return list.find((b) => b.id !== ignoreId && ['booked', 'started'].includes(b.status) && bookingIsLive(b, now) && overlaps(start, end, b.start, b.end));
-}
+const schedRef = (instrumentId) => doc(db, 'bookingSchedules', instrumentId);
+const ACTIVE = ['booked', 'started'];
 
-async function bookingsForInstrument(instrumentId) {
-  const snap = await getDocsFromServer(query(collection(db, 'bookings'), where('instrumentId', '==', instrumentId)));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
+const once = (fn) => {
+  let p;
+  return () => (p ||= fn());
+};
 
-export async function createBooking({ instrument, profile, start, end, purpose, activeSession }) {
-  start = toDate(start);
-  end = toDate(end);
-  const maxH = instrument.maxBookingHours || DEFAULT_MAX_BOOKING_HOURS;
-  if (!canUseInstrument(instrument, profile)) {
-    throw new Error(instrument.restricted ? 'This instrument needs training approval before you can book it.' : 'You cannot book this instrument.');
+// Until the new security rules are deployed, writes that touch bookingSchedules are refused. Detect that
+// once and use the previous behaviour, so publishing the app before the rules never breaks booking.
+let schedulesDeployed = true;
+async function withScheduleFallback(run, fallback) {
+  if (!schedulesDeployed) return fallback();
+  try {
+    return await run();
+  } catch (e) {
+    if (e?.code !== 'permission-denied') throw e;
+    try {
+      await getDoc(schedRef('_probe'));
+    } catch (probe) {
+      if (probe?.code === 'permission-denied') {
+        schedulesDeployed = false;
+        return fallback();
+      }
+    }
+    throw e;
   }
+}
+
+/** First use of an instrument's schedule: build it from the upcoming bookings already in the database. */
+async function legacyEntries(instrumentId) {
+  const snap = await getDocsFromServer(query(collection(db, 'bookings'), where('end', '>=', Timestamp.fromDate(new Date(Date.now() - HOUR)))));
+  const out = {};
+  for (const d of snap.docs) {
+    const b = d.data();
+    if (b.instrumentId === instrumentId && ACTIVE.includes(b.status)) out[d.id] = { s: b.start, e: b.end, uid: b.userId, name: b.userName || '' };
+  }
+  return out;
+}
+
+/**
+ * Inside a transaction: the schedule entries for an instrument, with any entry whose booking overlaps
+ * [start, end) verified against the booking itself (cancelled / released / deleted ones are dropped).
+ * Returns { entries, clash } where clash is the first live booking that overlaps.
+ */
+async function readSchedule(tx, instrumentId, start, end, { ignoreId, legacy } = {}) {
+  const snap = await tx.get(schedRef(instrumentId));
+  const now = new Date();
+  const entries = { ...(snap.exists() ? snap.data().b || {} : await legacy()) };
+  // Housekeeping: forget bookings that ended more than an hour ago.
+  for (const [id, e] of Object.entries(entries)) if (toDate(e.e) < new Date(now - HOUR)) delete entries[id];
+  let clash = null;
+  for (const [id, e] of Object.entries(entries)) {
+    if (id === ignoreId || !overlaps(start, end, e.s, e.e)) continue;
+    const b = await tx.get(doc(db, 'bookings', id));
+    const data = b.exists() ? { id, ...b.data() } : null;
+    if (data && ACTIVE.includes(data.status) && bookingIsLive(data, now)) {
+      clash = clash || data;
+    } else {
+      delete entries[id];
+    }
+  }
+  return { entries, clash };
+}
+
+/** Inside a transaction: someone else's running session that is still going at `start`. */
+async function runningSessionAt(tx, instrumentId, uid, start) {
+  const inst = await tx.get(doc(db, 'instruments', instrumentId));
+  if (!inst.exists()) throw new Error('Instrument not found.');
+  const i = inst.data();
+  if (i.status === 'out_of_service') throw new Error('This instrument is out of service.');
+  if (!i.activeSession || i.activeSession.uid === uid) return null;
+  const s = await tx.get(doc(db, 'sessions', i.activeSession.sessionId));
+  return s.exists() && s.data().status === 'active' && toDate(s.data().expectedEnd) > start ? s.data() : null;
+}
+
+function validateBookingTimes(instrument, start, end) {
+  const maxH = instrument?.maxBookingHours || DEFAULT_MAX_BOOKING_HOURS;
   if (!(end > start)) throw new Error('End must be after start.');
   if (end <= new Date()) throw new Error('That time is already in the past.');
   if (end - start > maxH * HOUR) throw new Error(`Maximum booking length for this instrument is ${maxH} h.`);
-  if (activeSession && activeSession.userId !== profile.uid && toDate(activeSession.expectedEnd) > start) {
-    throw new Error(`${activeSession.userName} is using it until ${fmtDateTime(activeSession.expectedEnd)}.`);
+}
+
+const clashMessage = (b) => `Overlaps ${b.userName}'s booking ${fmtDateTime(b.start)} – ${fmtTime(b.end)}. Pick another time.`;
+
+export async function createBooking({ instrument, profile, start, end, purpose }) {
+  start = toDate(start);
+  end = toDate(end);
+  if (!canUseInstrument(instrument, profile)) {
+    throw new Error(instrument.restricted ? 'This instrument needs training approval before you can book it.' : 'You cannot book this instrument.');
   }
-
-  const existing = await bookingsForInstrument(instrument.id);
-  const clash = findConflict(existing, start, end);
-  if (clash) throw new Error(`Overlaps ${clash.userName}'s booking ${fmtDateTime(clash.start)} – ${fmtTime(clash.end)}. Pick another time.`);
-
-  const ref = await addDoc(collection(db, 'bookings'), {
+  validateBookingTimes(instrument, start, end);
+  const ref = doc(collection(db, 'bookings'));
+  const data = {
     instrumentId: instrument.id,
     instrumentName: instrument.name,
     userId: profile.uid,
@@ -235,38 +329,65 @@ export async function createBooking({ instrument, profile, start, end, purpose, 
     purpose: String(purpose || '').trim().slice(0, 300),
     status: 'booked',
     createdAt: serverTimestamp(),
-  });
-
-  // Race check: if two people booked the same slot at the same moment, the
-  // earlier-created booking wins and the later one is removed.
-  const after = await bookingsForInstrument(instrument.id);
-  const mine = after.find((b) => b.id === ref.id);
-  const rival = after.find(
-    (b) =>
-      b.id !== ref.id &&
-      ['booked', 'started'].includes(b.status) &&
-      overlaps(start, end, b.start, b.end) &&
-      (toDate(b.createdAt) < toDate(mine?.createdAt) || (+toDate(b.createdAt) === +toDate(mine?.createdAt) && b.id < ref.id)),
+  };
+  const legacy = once(() => legacyEntries(instrument.id)); // at most one query, even if the transaction retries
+  await withScheduleFallback(
+    () =>
+      runTransaction(db, async (tx) => {
+        const [sched, running] = await Promise.all([
+          readSchedule(tx, instrument.id, start, end, { legacy }),
+          runningSessionAt(tx, instrument.id, profile.uid, start),
+        ]);
+        if (sched.clash) throw new Error(clashMessage(sched.clash));
+        if (running) throw new Error(`${running.userName} is using it until ${fmtDateTime(running.expectedEnd)}.`);
+        tx.set(schedRef(instrument.id), {
+          b: { ...sched.entries, [ref.id]: { s: ts(start), e: ts(end), uid: profile.uid, name: profile.name || '' } },
+          updatedAt: serverTimestamp(),
+        });
+        tx.set(ref, data);
+      }),
+    // Old security rules (schedules not deployed yet): fresh server check, then a plain write.
+    async () => {
+      const clash = Object.entries(await legacyEntries(instrument.id)).find(([, e]) => overlaps(start, end, e.s, e.e));
+      if (clash) throw new Error(`Overlaps ${clash[1].name}'s booking. Pick another time.`);
+      await setDoc(ref, data);
+    },
   );
-  if (rival) {
-    await deleteDoc(ref);
-    throw new Error(`${rival.userName} booked this slot a moment before you.`);
-  }
   return ref.id;
 }
 
 export async function moveBooking(booking, start, end, instrument) {
-  const maxH = instrument?.maxBookingHours || DEFAULT_MAX_BOOKING_HOURS;
-  if (!(toDate(end) > toDate(start))) throw new Error('End must be after start.');
-  if (toDate(end) - toDate(start) > maxH * HOUR) throw new Error(`Maximum booking length is ${maxH} h.`);
-  const existing = await bookingsForInstrument(booking.instrumentId);
-  const clash = findConflict(existing, start, end, booking.id);
-  if (clash) throw new Error(`Overlaps ${clash.userName}'s booking.`);
-  return updateDoc(doc(db, 'bookings', booking.id), { start: ts(start), end: ts(end) });
+  start = toDate(start);
+  end = toDate(end);
+  validateBookingTimes(instrument, start, end);
+  const legacy = once(() => legacyEntries(booking.instrumentId));
+  await runTransaction(db, async (tx) => {
+    const { entries, clash } = await readSchedule(tx, booking.instrumentId, start, end, { ignoreId: booking.id, legacy });
+    if (clash) throw new Error(clashMessage(clash));
+    tx.set(schedRef(booking.instrumentId), {
+      b: { ...entries, [booking.id]: { s: ts(start), e: ts(end), uid: booking.userId, name: booking.userName || '' } },
+      updatedAt: serverTimestamp(),
+    });
+    tx.update(doc(db, 'bookings', booking.id), { start: ts(start), end: ts(end) });
+  });
+}
+
+/** Frees the slot in the schedule in the same write as the status change. */
+function freeSlot(batch, b) {
+  batch.set(schedRef(b.instrumentId), { b: { [b.id]: deleteField() }, updatedAt: serverTimestamp() }, { merge: true });
 }
 
 export function cancelBooking(booking) {
-  return updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled', cancelledAt: serverTimestamp() });
+  const patch = { status: 'cancelled', cancelledAt: serverTimestamp() };
+  return withScheduleFallback(
+    () => {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'bookings', booking.id), patch);
+      freeSlot(batch, booking);
+      return batch.commit();
+    },
+    () => updateDoc(doc(db, 'bookings', booking.id), patch),
+  );
 }
 
 /** Releases no-shows. Run by every open client; the rules only allow it after the grace period. */
@@ -274,7 +395,18 @@ export async function releaseNoShows(bookings) {
   const now = new Date();
   const stale = bookings.filter((b) => bookingIsNoShow(b, now));
   await Promise.all(
-    stale.map((b) => updateDoc(doc(db, 'bookings', b.id), { status: 'released', releasedAt: serverTimestamp() }).catch(() => {})),
+    stale.map((b) => {
+      const patch = { status: 'released', releasedAt: serverTimestamp() };
+      return withScheduleFallback(
+        () => {
+          const batch = writeBatch(db);
+          batch.update(doc(db, 'bookings', b.id), patch);
+          freeSlot(batch, b);
+          return batch.commit();
+        },
+        () => updateDoc(doc(db, 'bookings', b.id), patch),
+      ).catch(() => {});
+    }),
   );
   return stale.length;
 }

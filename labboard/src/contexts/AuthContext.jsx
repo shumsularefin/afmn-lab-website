@@ -13,22 +13,35 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let unsubProfile = () => {};
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       unsubProfile();
       setProfile(null);
       setUser(u);
       if (!u) return;
-      try {
-        await ensureUserProfile(u, ALLOWED_DOMAIN);
-      } catch (e) {
-        console.error(e);
-        setError(e);
-      }
+      // Listen to the profile straight away: on return visits it comes from the on-device cache in a few
+      // milliseconds, so the board appears without waiting for any network round trip. Creating or
+      // refreshing the profile runs alongside it.
+      let ensuring = true;
+      let missingSnap = null;
+      const missing = { uid: u.uid, email: u.email, approved: false, role: 'guest', missing: true };
       unsubProfile = onSnapshot(
         doc(db, 'users', u.uid),
-        (s) => setProfile(s.exists() ? { id: s.id, ...s.data() } : { uid: u.uid, email: u.email, approved: false, role: 'guest', missing: true }),
+        (s) => {
+          if (s.exists()) setProfile({ id: s.id, ...s.data() });
+          else if (!ensuring) setProfile(missing);
+          else missingSnap = true; // first sign-in: wait for the profile to be created
+        },
         (e) => setError(e),
       );
+      ensureUserProfile(u, ALLOWED_DOMAIN)
+        .catch((e) => {
+          console.error(e);
+          setError(e);
+        })
+        .finally(() => {
+          ensuring = false;
+          if (missingSnap) setProfile((p) => p || missing);
+        });
     });
     return () => {
       unsub();
