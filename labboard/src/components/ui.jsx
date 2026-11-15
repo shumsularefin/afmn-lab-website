@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 
 export function cx(...c) {
   return c.filter(Boolean).join(' ');
@@ -147,7 +147,81 @@ export function FullPageSpinner({ label = 'Loading…' }) {
 }
 
 /** Sheet: a centered macOS sheet on desktop, an iOS bottom sheet with a grabber on phones. */
+// Swipe a bottom sheet down to close it (phones only). Drag starts anywhere on the
+// sheet when its content is scrolled to the top; otherwise the content scrolls normally.
+export function useSwipeToClose(sheetRef, onClose, { scrollRef, backdropRef } = {}) {
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return undefined;
+    let startY = null;
+    let startT = 0;
+    let dy = 0;
+    let dragging = false;
+    const scroller = () => scrollRef?.current || el;
+    const setBackdrop = (o, t) => {
+      const b = backdropRef?.current;
+      if (b) { b.style.transition = t; b.style.opacity = o; }
+    };
+    const onStart = (e) => {
+      startY = null;
+      if (e.touches.length !== 1 || window.innerWidth >= 640) return;
+      if (e.target.closest('input, textarea, select, [contenteditable], [data-no-swipe]')) return;
+      startY = e.touches[0].clientY;
+      startT = performance.now();
+      dy = 0;
+      dragging = false;
+    };
+    const onMove = (e) => {
+      if (startY == null) return;
+      const d = e.touches[0].clientY - startY;
+      if (!dragging) {
+        if (Math.abs(d) < 6) return;
+        const sc = scroller();
+        if (d < 0 || (sc.contains(e.target) && sc.scrollTop > 0)) { startY = null; return; }
+        dragging = true;
+        startY += d; // start the drag from here so it doesn't jump
+        el.style.transition = 'none';
+      }
+      dy = Math.max(0, e.touches[0].clientY - startY);
+      el.style.transform = `translateY(${dy}px)`;
+      setBackdrop(String(Math.max(0, 1 - dy / el.offsetHeight)), 'none');
+      if (e.cancelable) e.preventDefault();
+    };
+    const onEnd = () => {
+      if (startY == null || !dragging) { startY = null; return; }
+      startY = null;
+      const v = dy / Math.max(1, performance.now() - startT); // px/ms
+      if (dy > Math.min(140, el.offsetHeight * 0.3) || (v > 0.5 && dy > 30)) {
+        el.style.transition = 'transform .22s cubic-bezier(.4,0,1,1)';
+        el.style.transform = 'translateY(100%)';
+        setBackdrop('0', 'opacity .22s');
+        setTimeout(() => close.current?.(), 200);
+      } else {
+        el.style.transition = 'transform .3s cubic-bezier(.32,.72,0,1)';
+        el.style.transform = '';
+        setBackdrop('', 'opacity .3s');
+      }
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    el.addEventListener('touchcancel', onEnd);
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+    };
+  });
+}
+
 export function Modal({ open, onClose, title, children, footer, wide }) {
+  const sheet = useRef(null);
+  const body = useRef(null);
+  const backdrop = useRef(null);
+  useSwipeToClose(sheet, onClose, { scrollRef: body, backdropRef: backdrop });
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => e.key === 'Escape' && onClose?.();
@@ -162,8 +236,9 @@ export function Modal({ open, onClose, title, children, footer, wide }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-0 animate-fade-in bg-black/30 dark:bg-black/50" onClick={onClose} />
+      <div ref={backdrop} className="absolute inset-0 animate-fade-in bg-black/30 dark:bg-black/50" onClick={onClose} />
       <div
+        ref={sheet}
         className={cx(
           'relative flex max-h-[92vh] w-full animate-sheet-up flex-col overflow-hidden rounded-t-[22px] bg-white shadow-sheet dark:bg-slate-900 dark:ring-1 dark:ring-white/10 sm:animate-zoom-in sm:rounded-2xl',
           wide ? 'sm:max-w-3xl' : 'sm:max-w-lg',
@@ -176,7 +251,7 @@ export function Modal({ open, onClose, title, children, footer, wide }) {
             <Icon name="x" className="h-4 w-4" strokeWidth={2.2} />
           </button>
         </div>
-        <div className="overflow-y-auto overscroll-contain px-5 pb-5">{children}</div>
+        <div ref={body} className="overflow-y-auto overscroll-contain px-5 pb-5">{children}</div>
         {footer && (
           <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-black/[0.06] bg-slate-50/80 px-5 py-3 dark:border-white/[0.06] dark:bg-white/[0.02]" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
             {footer}
