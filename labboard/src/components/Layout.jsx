@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
 import { useReminders } from '../hooks/useReminders';
 import { useNow } from '../hooks/useNow';
-import { Avatar, Icon, cx } from './ui';
+import { Avatar, Icon, cx, useSwipeToClose } from './ui';
 import { asset } from '../lib/paths';
 import { toDate } from '../lib/time';
 import { OverdueGuard } from './OverdueGuard';
@@ -228,6 +228,20 @@ function MoreSheet({ open, onClose }) {
   const { profile, isAdmin, signOut } = useAuth();
   const { dark, toggle } = useTheme();
   const badge = useBadges();
+  const sheet = useRef(null);
+  const backdrop = useRef(null);
+  useSwipeToClose(sheet, onClose, { backdropRef: backdrop });
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onClose]);
   if (!open) return null;
   const rows = [
     { to: '/chemicals', label: 'Chemicals', icon: 'flask', tint: 'bg-teal-500' },
@@ -240,9 +254,11 @@ function MoreSheet({ open, onClose }) {
   ];
   return (
     <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="More">
-      <div className="absolute inset-0 animate-fade-in bg-black/30" onClick={onClose} />
-      <div className="pb-safe absolute inset-x-0 bottom-0 max-h-[88vh] animate-sheet-up overflow-y-auto rounded-t-[22px] bg-slate-50 dark:bg-slate-950">
-        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-300 dark:bg-white/20" />
+      <div ref={backdrop} className="absolute inset-0 animate-fade-in bg-black/30" onClick={onClose} />
+      <div ref={sheet} className="pb-safe absolute inset-x-0 bottom-0 max-h-[88vh] animate-sheet-up overflow-y-auto overscroll-contain rounded-t-[22px] bg-slate-50 dark:bg-slate-950">
+        <button onClick={onClose} className="flex w-full justify-center pb-1 pt-2" aria-label="Close">
+          <span className="h-1.5 w-10 rounded-full bg-slate-300 dark:bg-white/20" />
+        </button>
         <div className="space-y-5 p-4">
           <div className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-card ring-1 ring-black/[0.06] dark:bg-slate-900 dark:ring-white/[0.07]">
             <Avatar src={profile?.photoURL} name={profile?.name} size="h-14 w-14" />
