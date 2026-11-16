@@ -241,6 +241,13 @@ table.data .sub { display: block; color: var(--muted); font-size: 16px; margin-t
 #pub-list h2 small { font: 700 14px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .pubs { list-style: none; margin: 0; padding: 0; }
 .p { display: grid; grid-template-columns: minmax(0, 1fr) 72px; gap: 24px; padding: 24px 0; border-bottom: 1px solid #000; }
+.pubs.numbered { counter-reset: none; }
+.p .n { display: none; }
+.pubs.numbered .p { grid-template-columns: 40px minmax(0, 1fr) 72px; }
+.pubs.numbered .p .n { display: block; font: 500 15px/1.6 var(--sans); color: var(--muted); }
+.p .ref { display: block; font-size: 16px; line-height: 1.6; color: var(--ink-2); padding-left: 0; }
+.p .ref b { color: #000; font-weight: 700; }
+.p .ref a.doi { color: var(--cyan-deep); overflow-wrap: anywhere; }
 .p .t { display: block; font: 400 1.35rem/1.35 var(--sans); letter-spacing: -.01em; }
 .p .t a { color: #000; text-decoration: none; }
 .p .t a:hover { color: var(--cyan-deep); }
@@ -385,6 +392,8 @@ td a, .ids a, .menu-aside a, .site-footer a, .links a { overflow-wrap: anywhere;
   .index img { max-height: 220px; }
   .roster b { font-size: 1.15rem; }
   .p { grid-template-columns: minmax(0, 1fr) 60px; gap: 12px; }
+  .pubs.numbered .p { grid-template-columns: 26px minmax(0, 1fr) 52px; gap: 8px; }
+  .p .ref { font-size: 15px; }
   .p .t { font-size: 1.15rem; -webkit-hyphens: auto; hyphens: auto; }
   .p .c { font-size: 1.5rem; }
   .p .c small { font-size: 9px; letter-spacing: .02em; white-space: nowrap; }
