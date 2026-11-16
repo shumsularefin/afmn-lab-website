@@ -78,7 +78,7 @@
   const LINKS_ = typeof LINKS !== 'undefined' ? LINKS : g.LINKS || {};
   const LINK_NAMES = { scholar: 'Google Scholar', researchgate: 'ResearchGate', orcid: 'ORCID', gstu: 'GSTU Faculty Page', linkedin: 'LinkedIn' };
 
-  const basePubs = PUBS_.map(([year, type, cites, title, authors, venue, url]) => ({ year, type, cites: cites || 0, title, authors, venue, url: url || '', featured: false }));
+  const basePubs = PUBS_.map(([year, type, cites, title, authors, venue, url, corresponding]) => ({ year, type, cites: cites || 0, title, authors, venue, url: url || '', corresponding: !!corresponding, featured: false }));
   const baseNews = NEWS_.map(([date, tag, text]) => ({ date, tag, text, link: '' }));
 
   // ------------------------------------------------------------------ defaults (the content the site shipped with)
@@ -177,7 +177,7 @@
       service:
         'He chairs the Department of Applied Chemistry and Chemical Engineering at GSTU, teaches Inorganic Chemistry, Chemical Technology, Pharmaceutical Chemistry and Technology, and Textile Engineering, and supervises B.Sc. and M.Sc. thesis research. He is Faculty Advisor of both the ACS and AIChE student chapters at GSTU. See [Teaching](teaching.html).',
       languages: 'English, Bengali, Korean (elementary).',
-      outputNote: 'conference presentations in Germany and Korea; chapters with Elsevier, the Royal Society of Chemistry and Taylor & Francis',
+      outputNote: 'conference presentations, mainly in Korea and Germany; chapters with Elsevier, CRC Press and the Royal Society of Chemistry',
       chaptersIntro: 'Prof. Kamruzzaman is Faculty Advisor of two professional student chapters at Gopalganj Science and Technology University.',
       chapters: [
         {

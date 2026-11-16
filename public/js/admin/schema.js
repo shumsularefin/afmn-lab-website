@@ -287,6 +287,7 @@ export const SECTIONS = [
           { key: 'type', label: 'Type', type: 'select', half: true, options: [['j', 'Journal article'], ['r', 'Review'], ['c', 'Book chapter'], ['a', 'Conference presentation']] },
           { key: 'cites', label: 'Citations', type: 'number', min: 0, max: 100000, half: true, hint: 'Updated automatically from Google Scholar when the title or DOI matches.' },
           { key: 'featured', label: 'Feature on the home page', type: 'checkbox', half: true },
+          { key: 'corresponding', label: 'Prof. Kamruzzaman is the corresponding author', type: 'checkbox', half: true, hint: 'Shows a “Corresponding author” label on the publication.' },
         ],
       },
     ],
