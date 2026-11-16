@@ -193,8 +193,11 @@ function toast(msg) {
 }
 
 // ---------- Citations: BibTeX / APA ----------
-function splitVenue(venue) {
-  const v = strip(venue), m = v.match(/^(.*?)[ ,]+(\d.*)$/);
+// Journals: "Name 12(3), 45–67" splits at the volume. Chapters end with their pages. Conferences are "Name, place · date · kind" and keep only the name.
+function splitVenue(venue, type) {
+  const v = strip(venue);
+  if (type === 'a') return [v.split(' · ')[0], ''];
+  const m = v.match(type === 'c' ? /^(.*?),\s*(\d+[–-]\d+)$/ : /^(.*?)[ ,]+(\d.*)$/);
   return m ? [m[1], m[2]] : [v, ''];
 }
 const authorsOf = (s) => s.split(',').map((a) => a.trim()).filter((a) => a && !/^et al/.test(a));
@@ -204,7 +207,7 @@ function apaAuthor(a) {
   return initials ? `${last}, ${initials}` : last;
 }
 function bibtex({ year, type, title, authors, venue, url }) {
-  const [name, details] = splitVenue(venue), au = authorsOf(authors);
+  const [name, details] = splitVenue(venue, type), au = authorsOf(authors);
   const key = (au[0] || 'anon').split(/\s+/).pop().toLowerCase().replace(/\W/g, '') + year + strip(title).split(/\s+/)[0].toLowerCase().replace(/\W/g, '');
   const kind = { c: 'incollection', a: 'inproceedings' }[type] || 'article';
   const f = [['title', `{${strip(title)}}`], ['author', au.join(' and ')], [type === 'c' || type === 'a' ? 'booktitle' : 'journal', name], ['year', year]];
@@ -212,10 +215,10 @@ function bibtex({ year, type, title, authors, venue, url }) {
   if (url && url.includes('doi.org/')) f.push(['doi', url.split('doi.org/')[1]]);
   return `@${kind}{${key},\n${f.map(([k, v]) => `  ${k} = {${v}}`).join(',\n')}\n}`;
 }
-function apa({ year, title, authors, venue, url }) {
+function apa({ year, type, title, authors, venue, url }) {
   const au = authorsOf(authors).map(apaAuthor), etal = /et al/.test(authors);
   const list = au.length === 1 ? au[0] : au.slice(0, -1).join(', ') + (etal ? ', … ' : ', & ') + au[au.length - 1];
-  const [name, details] = splitVenue(venue);
+  const [name, details] = splitVenue(venue, type);
   return `${list} (${year}). ${strip(title)}. ${name}${details ? ', ' + details : ''}.${url ? ' ' + url : ''}`;
 }
 async function copy(text, btn) {
@@ -230,13 +233,13 @@ const TYPE = { j: 'Article', r: 'Review', c: 'Chapter', a: 'Abstract' };
 const pubs = () => C.publications.items || [];
 function pubItem(p, withYear = false) {
   const i = pubs().indexOf(p);
-  const { year, type, cites, title, authors, venue, url } = p;
+  const { year, type, cites, title, authors, venue, url, corresponding } = p;
   const scholar = 'https://scholar.google.com/scholar?q=' + encodeURIComponent('"' + strip(title) + '"');
   return `<li class="p"><div>
     <span class="t"><a href="${esc(url || scholar)}" target="_blank" rel="noopener">${inline(title)}</a></span>
     <span class="au">${esc(authors).replace(/(Md?\. Kamruzzaman)/g, '<b>$1</b>')}</span>
     <span class="v"><em>${inline(venue)}</em>${withYear ? ` · ${esc(year)}` : ''}</span>
-    <span class="tools"><span>${TYPE[type] || 'Article'}</span>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${url.includes('doi.org') ? 'DOI' : 'Link'}</a>` : ''}<a href="${scholar}" target="_blank" rel="noopener">Scholar</a><button type="button" data-cite="bib" data-i="${i}">BibTeX</button><button type="button" data-cite="apa" data-i="${i}">APA</button></span>
+    <span class="tools"><span>${TYPE[type] || 'Article'}</span>${corresponding ? '<span class="corr" title="Prof. Kamruzzaman is the corresponding author">✉ Corresponding author</span>' : ''}${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${url.includes('doi.org') ? 'DOI' : 'Link'}</a>` : ''}<a href="${scholar}" target="_blank" rel="noopener">Scholar</a><button type="button" data-cite="bib" data-i="${i}">BibTeX</button><button type="button" data-cite="apa" data-i="${i}">APA</button></span>
   </div>${cites ? `<div class="c">${cites}<small>citations</small></div>` : '<div></div>'}</li>`;
 }
 
