@@ -196,7 +196,7 @@ function toast(msg) {
 // Journals: "Name 12(3), 45–67" splits at the volume. Chapters end with their pages. Conferences are "Name, place · date · kind" and keep only the name.
 function splitVenue(venue, type) {
   const v = strip(venue);
-  if (type === 'a') return [v.split(' · ')[0], ''];
+  if (type === 'a' || type === 'p') return [v.split(' · ')[0], ''];
   const m = v.match(type === 'c' ? /^(.*?),\s*(\d+[–-]\d+)$/ : /^(.*?)[ ,]+(\d.*)$/);
   return m ? [m[1], m[2]] : [v, ''];
 }
@@ -209,18 +209,25 @@ function apaAuthor(a) {
 function bibtex({ year, type, title, authors, venue, url }) {
   const [name, details] = splitVenue(venue, type), au = authorsOf(authors);
   const key = (au[0] || 'anon').split(/\s+/).pop().toLowerCase().replace(/\W/g, '') + year + strip(title).split(/\s+/)[0].toLowerCase().replace(/\W/g, '');
-  const kind = { c: 'incollection', a: 'inproceedings' }[type] || 'article';
-  const f = [['title', `{${strip(title)}}`], ['author', au.join(' and ')], [type === 'c' || type === 'a' ? 'booktitle' : 'journal', name], ['year', year]];
+  const kind = { c: 'incollection', a: 'inproceedings', p: 'inproceedings' }[type] || 'article';
+  const f = [['title', `{${strip(title)}}`], ['author', au.join(' and ')], ['cap'.includes(type) ? 'booktitle' : 'journal', name], ['year', year]];
   if (details) f.push(['note', details]);
   if (url && url.includes('doi.org/')) f.push(['doi', url.split('doi.org/')[1]]);
   return `@${kind}{${key},\n${f.map(([k, v]) => `  ${k} = {${v}}`).join(',\n')}\n}`;
 }
-function apa({ year, type, title, authors, venue, url }) {
+// APA 7 reference as HTML. Entries from the publication list carry their exact reference (p.apa);
+// others (added from the dashboard or by the Scholar update) get one built from their fields.
+function apaHTML({ year, type, title, authors, venue, apa: ref }) {
+  if (hasText(ref)) return inline(ref);
   const au = authorsOf(authors).map(apaAuthor), etal = /et al/.test(authors);
   const list = au.length === 1 ? au[0] : au.slice(0, -1).join(', ') + (etal ? ', … ' : ', & ') + au[au.length - 1];
   const [name, details] = splitVenue(venue, type);
-  return `${list} (${year}). ${strip(title)}. ${name}${details ? ', ' + details : ''}.${url ? ' ' + url : ''}`;
+  const t = inline(title).replace(/[.?!]$/, '');
+  if ('ap'.includes(type)) return `${esc(list)} (${esc(year)}). <em>${t}</em>${name ? ` [Conference presentation]. ${esc(name)}` : ''}.`;
+  if (type === 'c') return `${esc(list)} (${esc(year)}). ${t}. In <em>${esc(name)}</em>${details ? ` (pp. ${esc(details)})` : ''}.`;
+  return `${esc(list)} (${esc(year)}). ${t}. <em>${esc(name)}</em>${details ? `, ${esc(details)}` : ''}.`;
 }
+const apa = (p) => strip(apaHTML(p)) + (p.url ? ' ' + p.url : '');
 async function copy(text, btn) {
   try { await navigator.clipboard.writeText(text); }
   catch { const t = document.createElement('textarea'); t.value = text; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); }
@@ -229,17 +236,16 @@ async function copy(text, btn) {
   toast('Citation copied to clipboard');
 }
 
-const TYPE = { j: 'Article', r: 'Review', c: 'Chapter', a: 'Abstract' };
+const TYPE = { j: 'Article', r: 'Review', c: 'Chapter', p: 'Presentation', a: 'Abstract' };
 const pubs = () => C.publications.items || [];
-function pubItem(p, withYear = false) {
+function pubItem(p, n = 0) {
   const i = pubs().indexOf(p);
-  const { year, type, cites, title, authors, venue, url, corresponding } = p;
+  const { type, cites, title, url, corresponding } = p;
   const scholar = 'https://scholar.google.com/scholar?q=' + encodeURIComponent('"' + strip(title) + '"');
-  return `<li class="p"><div>
-    <span class="t"><a href="${esc(url || scholar)}" target="_blank" rel="noopener">${inline(title)}</a></span>
-    <span class="au">${esc(authors).replace(/(Md?\. Kamruzzaman)/g, '<b>$1</b>')}</span>
-    <span class="v"><em>${inline(venue)}</em>${withYear ? ` · ${esc(year)}` : ''}</span>
-    <span class="tools"><span>${TYPE[type] || 'Article'}</span>${corresponding ? '<span class="corr" title="Prof. Kamruzzaman is the corresponding author">✉ Corresponding author</span>' : ''}${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${url.includes('doi.org') ? 'DOI' : 'Link'}</a>` : ''}<a href="${scholar}" target="_blank" rel="noopener">Scholar</a><button type="button" data-cite="bib" data-i="${i}">BibTeX</button><button type="button" data-cite="apa" data-i="${i}">APA</button></span>
+  const ref = apaHTML(p).replace(/(Kamruzzaman, M\.|Md?\. Kamruzzaman)/, '<b>$1</b>');
+  return `<li class="p">${n ? `<span class="n">${n}.</span>` : ''}<div>
+    <span class="ref">${ref}${url ? ` <a class="doi" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>` : ''}</span>
+    <span class="tools"><span>${TYPE[type] || 'Article'}</span>${corresponding ? '<span class="corr" title="Prof. Kamruzzaman is the corresponding author">✉ Corresponding author</span>' : ''}<a href="${scholar}" target="_blank" rel="noopener">Scholar</a><button type="button" data-cite="bib" data-i="${i}">BibTeX</button><button type="button" data-cite="apa" data-i="${i}">Copy APA</button></span>
   </div>${cites ? `<div class="c">${cites}<small>citations</small></div>` : '<div></div>'}</li>`;
 }
 
@@ -308,7 +314,7 @@ const RENDER = {
     const featured = pubs().filter((p) => p.featured);
     const list = (featured.length ? featured : pubs().filter((p) => p.type === 'j' && p.year >= new Date().getFullYear() - 1))
       .slice().sort((a, b) => b.year - a.year || b.cites - a.cites).slice(0, +C.home.pubCount || 5);
-    el.innerHTML = list.map((p) => pubItem(p, true)).join('');
+    el.innerHTML = list.map((p) => pubItem(p)).join('');
   },
   'news'(el) {
     const home = 'home' in el.dataset, limit = home ? +C.home.newsCount || 6 : 0, skip = home ? C.home.newsSkipTag : '';
@@ -394,17 +400,19 @@ const RENDER = {
 };
 
 // ---------- Publications page ----------
+// Sections and order follow the publication list document: newest first within each section.
+// The list is shown in its stored order (dashboard order; new Scholar papers are added at the top).
+const PUB_SECTIONS = [['jr', 'pub-articles', 'Peer-reviewed journal articles', 'Articles'], ['c', 'pub-chapters', 'Book chapters', 'Chapters'],
+  ['p', 'pub-recent', 'Recent conference contributions', 'Recent conferences'], ['a', 'pub-abstracts', 'Conference abstracts', 'Abstracts']];
 let pubFilter = 'jr';
 function renderPubList() {
   const list = $('#pub-list'); if (!list) return;
   const q = $('#pub-q').value.trim().toLowerCase();
-  const rows = pubs().filter((p) => pubFilter.includes(p.type) && (!q || strip(`${p.title} ${p.authors} ${p.venue} ${p.year}`).toLowerCase().includes(q)))
-    .sort((a, b) => b.year - a.year || b.cites - a.cites);
-  const byYear = {};
-  rows.forEach((p) => (byYear[p.year] ||= []).push(p));
-  list.innerHTML = Object.keys(byYear).sort((a, b) => b - a).map((y) =>
-    `<h2 id="y${y}" data-nav="${y}">${y} <small>${byYear[y].length} item${byYear[y].length > 1 ? 's' : ''}</small></h2><ol class="pubs">${byYear[y].map((p) => pubItem(p)).join('')}</ol>`).join('')
-    || '<p class="muted" style="margin-top:32px">No publications match this search.</p>';
+  const rows = pubs().filter((p) => pubFilter.includes(p.type) && (!q || strip(`${p.title} ${p.authors} ${p.venue} ${p.year} ${p.apa || ''}`).toLowerCase().includes(q)));
+  list.innerHTML = PUB_SECTIONS.map(([types, id, label, nav]) => {
+    const sec = rows.filter((p) => types.includes(p.type));
+    return sec.length ? `<h2 id="${id}" data-nav="${nav}">${label} <small>${sec.length} item${sec.length > 1 ? 's' : ''}</small></h2><ol class="pubs numbered">${sec.map((p, k) => pubItem(p, k + 1)).join('')}</ol>` : '';
+  }).join('') || '<p class="muted" style="margin-top:32px">No publications match this search.</p>';
   $('#pub-count').textContent = `${rows.length} ${rows.length === 1 ? 'entry' : 'entries'}`;
   buildSecnav();
 }
@@ -439,7 +447,7 @@ function renderAll() {
     el.innerHTML = inline(C[s]?.[k] ?? '');
   }
   $$('[data-scholar]').forEach((el) => { const v = scholarValue(el.dataset.scholar); if (v) el.textContent = v; });
-  const papers = pubs().filter((p) => p.type !== 'a');
+  const papers = pubs().filter((p) => !'ap'.includes(p.type));
   $$('[data-count]').forEach((el) => (el.textContent = { papers: papers.length, abstracts: pubs().length - papers.length }[el.dataset.count]));
   $$('[data-links]').forEach((el) => (el.innerHTML = linksOf().map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener"><small>${esc(l.label)}</small>${esc(l.url.replace(/^https?:\/\/(www\.)?/, '').replace(/[?&].*$/, '').slice(0, 44))}</a>`).join('')));
   $$('.figures').forEach((el) => (el.hidden = C.home.showStats === false));

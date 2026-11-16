@@ -78,7 +78,7 @@
   const LINKS_ = typeof LINKS !== 'undefined' ? LINKS : g.LINKS || {};
   const LINK_NAMES = { scholar: 'Google Scholar', researchgate: 'ResearchGate', orcid: 'ORCID', gstu: 'GSTU Faculty Page', linkedin: 'LinkedIn' };
 
-  const basePubs = PUBS_.map(([year, type, cites, title, authors, venue, url, corresponding]) => ({ year, type, cites: cites || 0, title, authors, venue, url: url || '', corresponding: !!corresponding, featured: false }));
+  const basePubs = PUBS_.map(([year, type, cites, title, authors, venue, url, corresponding, apa]) => ({ year, type, cites: cites || 0, title, authors, venue, url: url || '', corresponding: !!corresponding, apa: apa || '', featured: false }));
   const baseNews = NEWS_.map(([date, tag, text]) => ({ date, tag, text, link: '' }));
 
   // ------------------------------------------------------------------ defaults (the content the site shipped with)
